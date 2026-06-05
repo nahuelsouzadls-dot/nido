@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "Nido",
+    "slug": "nido",
+    "version": "1.0.0",
+    "sdkVersion": "54.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF8F5"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nido.hogar",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Nido accede a tus fotos para adjuntar comprobantes.",
+        "NSPhotoLibraryAddUsageDescription": "Nido guarda fotos de comprobantes en tu galería."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FAF8F5"
+      },
+      "package": "com.nido.hogar",
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/icon.png",
+      "name": "Nido",
+      "shortName": "Nido",
+      "description": "Tu hogar en tus manos. Gestión compartida de gastos y facturas.",
+      "themeColor": "#5E5CE6",
+      "backgroundColor": "#FAF8F5",
+      "lang": "es",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "scheme": "nido",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "TU_PROJECT_ID_AQUI"
+      }
+    }
+  }
+}
