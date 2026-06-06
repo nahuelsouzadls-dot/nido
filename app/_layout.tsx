@@ -14,22 +14,12 @@ export default function RootLayout() {
   const colors = useColors();
 
   useEffect(() => {
-    // getSession() carga la sesión inicial de forma síncrona.
-    // onAuthStateChange también dispara INITIAL_SESSION, por eso lo saltamos
-    // para no llamar cargarPerfil() dos veces al arrancar.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        cargarPerfil();
-      } else {
-        setLoading(false);
-      }
-    });
-
+    // onAuthStateChange dispara INITIAL_SESSION al registrarse con la sesión almacenada.
+    // Es la fuente de verdad recomendada en Supabase v2 — no necesitamos getSession().
+    // TOKEN_REFRESHED: el SDK refresca el token automáticamente; solo actualizamos el
+    // objeto de sesión sin recargar datos de perfil (no cambiaron).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // INITIAL_SESSION: ya manejado por getSession() arriba.
-      // TOKEN_REFRESHED: solo actualiza el token, no recarga datos del perfil.
-      if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+      if (event === 'TOKEN_REFRESHED') {
         setSession(session);
         return;
       }

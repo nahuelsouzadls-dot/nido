@@ -1,25 +1,43 @@
 import { useMemo } from 'react';
-import type { Gasto, Balance } from '@/types';
+import type { Gasto, FacturaPago, Balance } from '@/types';
 import { useAuthStore } from '@/store/auth';
 
 type DivisionConfig = {
   tipo: '50-50' | 'porcentaje' | 'monto-fijo';
-  porcentajeA?: number; // porcentaje de la persona A (perfil)
+  porcentajeA?: number;
 };
 
-export function useBalance(gastos: Gasto[], config: DivisionConfig = { tipo: '50-50' }) {
+type Contribucion = {
+  pagado_por: string;
+  monto: number;
+};
+
+export function useBalance(
+  gastos: Gasto[],
+  facturasPagadas: FacturaPago[] = [],
+  config: DivisionConfig = { tipo: '50-50' },
+) {
   const { perfil, companero } = useAuthStore();
 
   const balance = useMemo((): Balance | null => {
     if (!perfil || !companero) return null;
 
-    const totalMes = gastos.reduce((sum, g) => sum + g.monto, 0);
-    const gastosPorA = gastos
-      .filter((g) => g.pagado_por === perfil.id)
-      .reduce((sum, g) => sum + g.monto, 0);
-    const gastosPorB = gastos
-      .filter((g) => g.pagado_por === companero.id)
-      .reduce((sum, g) => sum + g.monto, 0);
+    // Unifica gastos y pagos de facturas en una sola lista de contribuciones.
+    // Ambos representan plata que alguien del hogar puso de su bolsillo.
+    const contribuciones: Contribucion[] = [
+      ...gastos.map((g) => ({ pagado_por: g.pagado_por, monto: g.monto })),
+      ...facturasPagadas
+        .filter((f) => f.pagado_por != null && f.monto != null)
+        .map((f) => ({ pagado_por: f.pagado_por!, monto: f.monto! })),
+    ];
+
+    const totalMes = contribuciones.reduce((sum, c) => sum + c.monto, 0);
+    const gastosPorA = contribuciones
+      .filter((c) => c.pagado_por === perfil.id)
+      .reduce((sum, c) => sum + c.monto, 0);
+    const gastosPorB = contribuciones
+      .filter((c) => c.pagado_por === companero.id)
+      .reduce((sum, c) => sum + c.monto, 0);
 
     let porcentajeA = 50;
     if (config.tipo === 'porcentaje' && config.porcentajeA !== undefined) {
@@ -28,9 +46,7 @@ export function useBalance(gastos: Gasto[], config: DivisionConfig = { tipo: '50
     const porcentajeB = 100 - porcentajeA;
 
     const deberiaA = (totalMes * porcentajeA) / 100;
-    const deberiaB = (totalMes * porcentajeB) / 100;
-
-    const diferencia = gastosPorA - deberiaA; // positivo = A pagó de más
+    const diferencia = gastosPorA - deberiaA;
 
     let deudor: string | null = null;
     let acreedor: string | null = null;
@@ -38,12 +54,10 @@ export function useBalance(gastos: Gasto[], config: DivisionConfig = { tipo: '50
 
     if (Math.abs(diferencia) > 0.5) {
       if (diferencia > 0) {
-        // A pagó de más → B le debe a A
         deudor = companero.id;
         acreedor = perfil.id;
         montoDebe = diferencia;
       } else {
-        // B pagó de más → A le debe a B
         deudor = perfil.id;
         acreedor = companero.id;
         montoDebe = Math.abs(diferencia);
@@ -61,7 +75,7 @@ export function useBalance(gastos: Gasto[], config: DivisionConfig = { tipo: '50
       acreedor,
       montoDebe,
     };
-  }, [gastos, perfil, companero, config]);
+  }, [gastos, facturasPagadas, perfil, companero, config]);
 
   return balance;
 }

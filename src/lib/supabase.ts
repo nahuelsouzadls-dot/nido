@@ -6,11 +6,6 @@ import { Platform } from 'react-native';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
-console.log('[Nido] URL raw:', process.env.EXPO_PUBLIC_SUPABASE_URL);
-console.log('[Nido] URL json:', JSON.stringify(process.env.EXPO_PUBLIC_SUPABASE_URL));
-console.log('[Nido] URL type:', typeof process.env.EXPO_PUBLIC_SUPABASE_URL);
-console.log('[Nido] KEY exists:', !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
-
 export const supabase = (() => {
   try {
     return createClient(supabaseUrl, supabaseAnonKey, {

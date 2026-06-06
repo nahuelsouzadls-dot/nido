@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { FAB } from '@/components/FAB';
 import { useAuthStore } from '@/store/auth';
 import { useGastos } from '@/hooks/useGastos';
+import { useFacturas } from '@/hooks/useFacturas';
 import { useBalance } from '@/hooks/useBalance';
 import { formatMonto, formatMes } from '@/utils/format';
 
@@ -36,22 +37,34 @@ export default function BalanceScreen() {
   const mes = hoy.getMonth() + 1;
   const anio = hoy.getFullYear();
 
-  const { gastos, loading, recargar } = useGastos(mes, anio);
+  const { gastos, loading: loadingGastos, recargar: recargarGastos } = useGastos(mes, anio);
+  const { facturas, loading: loadingFacturas, recargar: recargarFacturas } = useFacturas(mes, anio);
+  const loading = loadingGastos || loadingFacturas;
+
   const [division, setDivision] = useState<Division>('50-50');
   const [refreshing, setRefreshing] = useState(false);
 
+  // Extrae solo los pagos de facturas pagadas para el cálculo de balance.
+  // Incluirlos corrige el cálculo: si alguien pagó una factura de su bolsillo,
+  // eso debe contarse en su contribución del mes.
+  const facturasPagadas = useMemo(
+    () => facturas
+      .filter((f) => f.pago_actual?.estado === 'pagada' && f.pago_actual?.pagado_por != null)
+      .map((f) => f.pago_actual!),
+    [facturas],
+  );
+
   const porcentajeA = DIVISIONES.find((d) => d.value === division)?.porcentaje ?? 50;
 
-  // Config estable para evitar re-renders innecesarios en useBalance
   const balanceConfig = useMemo(
     () => ({ tipo: 'porcentaje' as const, porcentajeA }),
     [porcentajeA],
   );
-  const balance = useBalance(gastos, balanceConfig);
+  const balance = useBalance(gastos, facturasPagadas, balanceConfig);
 
   const refresh = async () => {
     setRefreshing(true);
-    await recargar();
+    await Promise.all([recargarGastos(), recargarFacturas()]);
     setRefreshing(false);
   };
 

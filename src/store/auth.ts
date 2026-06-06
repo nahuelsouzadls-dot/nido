@@ -39,7 +39,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
-    // Resetea antes de cargar para evitar estado residual de sesiones anteriores
     set({ loading: true, perfil: null, hogar: null, companero: null });
 
     const { data: perfil } = await supabase
@@ -64,13 +63,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (hogar) set({ hogar });
 
-      const { data: companero } = await supabase
+      // Carga todos los miembros del hogar excepto el usuario actual.
+      // Soporta hogares con múltiples integrantes — toma el primero como
+      // "compañero" para la UI actual, sin asumir que solo hay 2 personas.
+      const { data: companeros } = await supabase
         .from('perfiles')
         .select('*')
         .eq('hogar_id', perfil.hogar_id)
-        .neq('id', session.user.id)
-        .single();
+        .neq('id', session.user.id);
 
+      const companero = companeros?.[0] ?? null;
       if (companero) set({ companero });
     }
 
@@ -78,7 +80,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
-    await supabase.auth.signOut();
-    set({ session: null, perfil: null, hogar: null, companero: null });
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Si la llamada falla (red caída, etc.), limpiamos el estado local de todas formas.
+      // El token en servidor expirará naturalmente; el usuario queda deslogueado localmente.
+    }
+    set({ session: null, perfil: null, hogar: null, companero: null, loading: false });
   },
 }));

@@ -88,7 +88,8 @@ export async function eliminarFactura(id: string) {
   if (error) throw error;
 }
 
-// Marca como vencidas las facturas que pasaron su fecha límite
+// Marca como vencidas las facturas que pasaron su día de vencimiento sin pago registrado.
+// Los upserts se ejecutan en paralelo para evitar el anti-patrón N+1 secuencial.
 export async function actualizarVencidas(hogarId: string, mes: number, anio: number) {
   const hoy = new Date().getDate();
 
@@ -100,20 +101,17 @@ export async function actualizarVencidas(hogarId: string, mes: number, anio: num
 
   if (!facturas) return;
 
-  for (const f of facturas) {
-    if (f.dia_vencimiento < hoy) {
-      await supabase
+  const vencidas = facturas.filter((f) => f.dia_vencimiento < hoy);
+  if (vencidas.length === 0) return;
+
+  await Promise.all(
+    vencidas.map((f) =>
+      supabase
         .from('facturas_pagos')
         .upsert(
-          {
-            factura_id: f.id,
-            hogar_id: hogarId,
-            mes,
-            anio,
-            estado: 'vencida',
-          },
+          { factura_id: f.id, hogar_id: hogarId, mes, anio, estado: 'vencida' },
           { onConflict: 'factura_id,mes,anio', ignoreDuplicates: true },
-        );
-    }
-  }
+        ),
+    ),
+  );
 }

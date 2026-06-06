@@ -31,36 +31,18 @@ export async function crearObjetivo(objetivo: {
 }
 
 export async function aportarObjetivo(objetivoId: string, perfilId: string, monto: number, nota?: string) {
-  const { error: aporteError } = await supabase.from('objetivos_aportes').insert({
-    objetivo_id: objetivoId,
-    perfil_id: perfilId,
-    monto,
-    nota,
+  // Operación atómica vía función SQL: inserta el aporte y actualiza monto_actual
+  // en una sola transacción. Evita la race condition de SELECT → compute → UPDATE
+  // cuando dos personas aportan al mismo objetivo simultáneamente.
+  const { data, error } = await supabase.rpc('aportar_objetivo', {
+    p_objetivo_id: objetivoId,
+    p_perfil_id: perfilId,
+    p_monto: monto,
+    p_nota: nota ?? null,
   });
 
-  if (aporteError) throw aporteError;
-
-  // Actualiza el monto actual sumando el aporte
-  const { data: objetivo } = await supabase
-    .from('objetivos')
-    .select('monto_actual, monto_objetivo')
-    .eq('id', objetivoId)
-    .single();
-
-  if (objetivo) {
-    const nuevoMonto = (objetivo.monto_actual ?? 0) + monto;
-    const completado = nuevoMonto >= objetivo.monto_objetivo;
-
-    const { data, error } = await supabase
-      .from('objetivos')
-      .update({ monto_actual: nuevoMonto, completado })
-      .eq('id', objetivoId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data as Objetivo;
-  }
+  if (error) throw error;
+  return data as Objetivo;
 }
 
 export async function eliminarObjetivo(id: string) {

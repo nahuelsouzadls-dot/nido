@@ -4,7 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Alert,
+  Platform,
   Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -62,11 +62,17 @@ export default function PerfilScreen() {
     }
   };
 
-  const handleSignOut = () => {
-    Alert.alert('Cerrar sesión', '¿Estás seguro?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Salir', style: 'destructive', onPress: signOut },
-    ]);
+  const handleSignOut = async () => {
+    if (Platform.OS === 'web') {
+      if (!window.confirm('¿Cerrar sesión?')) return;
+      await signOut();
+    } else {
+      const { Alert } = await import('react-native');
+      Alert.alert('Cerrar sesión', '¿Estás seguro?', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Salir', style: 'destructive', onPress: signOut },
+      ]);
+    }
   };
 
   const objetivosCompletados = objetivos.filter((o) => o.completado);

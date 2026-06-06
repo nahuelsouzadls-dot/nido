@@ -75,8 +75,16 @@ export default function OnboardingScreen() {
     }
   };
 
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   const unirseHogar = async () => {
     if (!codigoHogar.trim() || !session?.user) return;
+
+    if (!UUID_REGEX.test(codigoHogar.trim())) {
+      setError('El código no tiene el formato correcto.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -89,16 +97,6 @@ export default function OnboardingScreen() {
 
       if (hogarError || !hogar) {
         setError('No encontramos ese hogar. Verificá el código.');
-        return;
-      }
-
-      const { count } = await supabase
-        .from('perfiles')
-        .select('id', { count: 'exact', head: true })
-        .eq('hogar_id', hogar.id);
-
-      if ((count ?? 0) >= 2) {
-        setError('Este hogar ya tiene 2 integrantes.');
         return;
       }
 
