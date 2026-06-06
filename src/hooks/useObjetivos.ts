@@ -3,9 +3,10 @@ import { getObjetivos, crearObjetivo, aportarObjetivo, eliminarObjetivo } from '
 import { registrarActividad } from '@/services/actividad';
 import { notificarCompanero } from '@/services/notificaciones';
 import { useAuthStore } from '@/store/auth';
-import type { Objetivo } from '@/types';
+import type { Objetivo, Scope } from '@/types';
 
-export function useObjetivos() {
+export function useObjetivos(options?: { scope?: Scope }) {
+  const scope = options?.scope ?? 'hogar';
   const { hogar, perfil } = useAuthStore();
   const [objetivos, setObjetivos] = useState<Objetivo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,12 +15,12 @@ export function useObjetivos() {
     if (!hogar) return;
     setLoading(true);
     try {
-      const data = await getObjetivos(hogar.id);
+      const data = await getObjetivos(hogar.id, scope);
       setObjetivos(data);
     } finally {
       setLoading(false);
     }
-  }, [hogar]);
+  }, [hogar, scope]);
 
   useEffect(() => {
     cargar();
@@ -31,14 +32,17 @@ export function useObjetivos() {
 
       const nuevo = await crearObjetivo({ ...objetivo, hogar_id: hogar.id });
 
-      await registrarActividad({
-        hogar_id: hogar.id,
-        perfil_id: perfil.id,
-        tipo: 'objetivo_creado',
-        titulo: `${perfil.nombre} creó un objetivo`,
-        descripcion: objetivo.nombre,
-        metadata: { objetivo_id: nuevo.id, monto: objetivo.monto_objetivo },
-      });
+      // Objetivos personales son privados — no se registran en actividad
+      if (objetivo.scope !== 'personal') {
+        await registrarActividad({
+          hogar_id: hogar.id,
+          perfil_id: perfil.id,
+          tipo: 'objetivo_creado',
+          titulo: `${perfil.nombre} creó un objetivo`,
+          descripcion: objetivo.nombre,
+          metadata: { objetivo_id: nuevo.id, monto: objetivo.monto_objetivo },
+        });
+      }
 
       await cargar();
       return nuevo;

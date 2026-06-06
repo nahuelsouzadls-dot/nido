@@ -14,12 +14,18 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useSpace } from '@/context/SpaceContext';
 import { Avatar } from '@/components/ui/Avatar';
+import { ScopeSelector } from '@/components/ui/ScopeSelector';
+import { PrivacyBadge } from '@/components/ui/PrivacyBadge';
 import { adjuntarFotoGasto } from '@/services/gastos';
 import { useAuthStore } from '@/store/auth';
 import { useGastos } from '@/hooks/useGastos';
 import { supabase } from '@/lib/supabase';
-import type { Categoria } from '@/types';
+import type { Categoria, Scope } from '@/types';
+
+const CATEGORIAS_HOGAR = ['Supermercado', 'Delivery', 'Hogar', 'Verdulería', 'Otro'];
+const CATEGORIAS_PERSONAL = ['Salud', 'Ropa', 'Transporte', 'Salidas', 'Suscripción', 'Otro'];
 
 function parseMonto(raw: string): number {
   if (raw.includes('.') && raw.includes(',')) return parseFloat(raw.replace(/\./g, '').replace(',', '.'));
@@ -39,6 +45,7 @@ function getCatIcon(icono: string): keyof typeof MaterialCommunityIcons.glyphMap
 export default function ModalGasto() {
   const router = useRouter();
   const colors = useColors();
+  const { activeContext } = useSpace();
   const { hogar, perfil, companero } = useAuthStore();
   const hoy = new Date();
   const { agregar } = useGastos(hoy.getMonth() + 1, hoy.getFullYear());
@@ -49,12 +56,14 @@ export default function ModalGasto() {
     fotoUri?: string;
   }>();
 
+  const [scope, setScope] = useState<Scope>(activeContext);
   const [monto, setMonto] = useState(montoOCR ?? '');
   const [descripcion, setDescripcion] = useState(descripcionOCR ?? '');
   const [categoriaId, setCategoriaId] = useState<string | null>(null);
+  const [categoriaTexto, setCategoriaTexto] = useState<string | null>(null);
   const [pagadoPor, setPagadoPor] = useState('');
   const [observaciones, setObservaciones] = useState('');
-  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [categoriasHogar, setCategoriasHogar] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(false);
   const [foto, setFoto] = useState<string | null>(fotoUri ?? null);
 
@@ -65,16 +74,24 @@ export default function ModalGasto() {
   useEffect(() => {
     if (!hogar) return;
     supabase.from('categorias').select('*').eq('hogar_id', hogar.id).then(({ data }) => {
-      if (data) setCategorias(data as Categoria[]);
+      if (data) setCategoriasHogar(data as Categoria[]);
     });
   }, [hogar]);
+
+  // Reset categoría al cambiar scope
+  useEffect(() => {
+    setCategoriaId(null);
+    setCategoriaTexto(null);
+  }, [scope]);
+
+  const accentColor = scope === 'personal' ? colors.personal : colors.primary;
 
   const handleGuardar = async () => {
     if (!monto || !descripcion.trim()) {
       Alert.alert('Campos requeridos', 'Completá el monto y la descripción');
       return;
     }
-    if (!pagadoPor) {
+    if (scope === 'hogar' && !pagadoPor) {
       Alert.alert('Seleccioná quién pagó', 'Tocá una de las dos personas antes de guardar');
       return;
     }
@@ -88,10 +105,12 @@ export default function ModalGasto() {
       const nuevo = await agregar({
         monto: montoNum,
         descripcion: descripcion.trim(),
-        categoria_id: categoriaId,
-        pagado_por: pagadoPor,
+        categoria_id: scope === 'hogar' ? categoriaId : null,
+        categoria_texto: scope === 'personal' ? categoriaTexto : null,
+        pagado_por: scope === 'personal' ? (perfil?.id ?? '') : pagadoPor,
         fecha: hoy.toISOString().split('T')[0],
         observaciones: observaciones.trim() || null,
+        scope,
       });
       if (foto && nuevo?.id) await adjuntarFotoGasto(nuevo.id, foto);
       router.back();
@@ -116,7 +135,7 @@ export default function ModalGasto() {
         </TouchableOpacity>
         <RNText style={[styles.topTitle, { color: colors.textPrimary }]}>Registrar gasto</RNText>
         <TouchableOpacity onPress={handleGuardar} disabled={loading}>
-          <RNText style={[styles.topSave, { color: loading ? colors.textSecondary : colors.primary }]}>Guardar</RNText>
+          <RNText style={[styles.topSave, { color: loading ? colors.textSecondary : accentColor }]}>Guardar</RNText>
         </TouchableOpacity>
       </View>
 
@@ -127,11 +146,14 @@ export default function ModalGasto() {
         showsVerticalScrollIndicator={false}
       >
         {/* Monto */}
-        <View style={[styles.montoCard, { backgroundColor: 'rgba(255,255,255,0.55)', borderColor: 'rgba(107,45,62,0.2)' }]}>
+        <View style={[styles.montoCard, {
+          backgroundColor: scope === 'personal' ? colors.cardPersonal : 'rgba(255,255,255,0.55)',
+          borderColor: scope === 'personal' ? colors.personalBorder : 'rgba(107,45,62,0.2)',
+        }]}>
           <RNText style={[styles.montoSign, { color: colors.textSecondary }]}>$</RNText>
           <TextInput
             style={[styles.montoInput, { color: colors.textPrimary }]}
-            placeholder="0"
+            placeholder={scope === 'personal' ? '¿Cuánto gastaste?' : '0'}
             placeholderTextColor={colors.textSecondary}
             value={monto}
             onChangeText={setMonto}
@@ -141,11 +163,14 @@ export default function ModalGasto() {
           />
         </View>
 
+        {/* Scope selector */}
+        <ScopeSelector value={scope} onChange={setScope} />
+
         {/* Descripción */}
         <View style={[styles.fieldsCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
           <TextInput
             style={[styles.fieldInput, { color: colors.textPrimary }]}
-            placeholder="¿Cuánto gastaste en qué?"
+            placeholder={scope === 'personal' ? '¿Cuánto gastaste en qué?' : '¿Cuánto gastaron en qué?'}
             placeholderTextColor={colors.textSecondary}
             value={descripcion}
             onChangeText={setDescripcion}
@@ -153,11 +178,11 @@ export default function ModalGasto() {
           />
         </View>
 
-        {/* Categoría chips */}
-        {categorias.length > 0 && (
+        {/* Categorías: hogar usa las del DB, personal usa chips estáticos */}
+        {scope === 'hogar' && categoriasHogar.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.chips}>
-              {categorias.map((cat) => {
+              {categoriasHogar.map((cat) => {
                 const selected = categoriaId === cat.id;
                 return (
                   <TouchableOpacity
@@ -183,31 +208,61 @@ export default function ModalGasto() {
           </ScrollView>
         )}
 
-        {/* ¿Quién pagó? */}
-        <View style={styles.seccion}>
-          <RNText style={[styles.seccionLabel, { color: colors.textSecondary }]}>¿Quién pagó?</RNText>
-          <View style={styles.pagadoresRow}>
-            {[perfil, companero].filter(Boolean).map((p) => p && (
-              <TouchableOpacity
-                key={p.id}
-                style={[
-                  styles.pagador,
-                  {
-                    backgroundColor: pagadoPor === p.id ? 'rgba(107,45,62,0.1)' : colors.card,
-                    borderColor: pagadoPor === p.id ? colors.primary : colors.borderSubtle,
-                  },
-                ]}
-                onPress={() => setPagadoPor(p.id)}
-                activeOpacity={0.8}
-              >
-                <Avatar nombre={p.nombre} url={p.avatar_url} size={34} color={colors.primaryLight} />
-                <RNText style={[styles.pagadorNombre, { color: pagadoPor === p.id ? colors.primary : colors.textSecondary }]}>
-                  {p.nombre.split(' ')[0]}
-                </RNText>
-              </TouchableOpacity>
-            ))}
+        {scope === 'personal' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.chips}>
+              {CATEGORIAS_PERSONAL.map((cat) => {
+                const selected = categoriaTexto === cat;
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: selected ? colors.personalLight : 'rgba(255,255,255,0.55)',
+                        borderColor: selected ? colors.personal : colors.borderSubtle,
+                      },
+                    ]}
+                    onPress={() => setCategoriaTexto(cat === categoriaTexto ? null : cat)}
+                    activeOpacity={0.8}
+                  >
+                    <RNText style={[styles.chipText, { color: selected ? colors.personal : colors.textSecondary }]}>
+                      {cat}
+                    </RNText>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
+        )}
+
+        {/* ¿Quién pagó? — solo en modo hogar */}
+        {scope === 'hogar' && (
+          <View style={styles.seccion}>
+            <RNText style={[styles.seccionLabel, { color: colors.textSecondary }]}>¿Quién pagó?</RNText>
+            <View style={styles.pagadoresRow}>
+              {[perfil, companero].filter(Boolean).map((p) => p && (
+                <TouchableOpacity
+                  key={p.id}
+                  style={[
+                    styles.pagador,
+                    {
+                      backgroundColor: pagadoPor === p.id ? 'rgba(107,45,62,0.1)' : colors.card,
+                      borderColor: pagadoPor === p.id ? colors.primary : colors.borderSubtle,
+                    },
+                  ]}
+                  onPress={() => setPagadoPor(p.id)}
+                  activeOpacity={0.8}
+                >
+                  <Avatar nombre={p.nombre} url={p.avatar_url} size={34} color={colors.primaryLight} />
+                  <RNText style={[styles.pagadorNombre, { color: pagadoPor === p.id ? colors.primary : colors.textSecondary }]}>
+                    {p.nombre.split(' ')[0]}
+                  </RNText>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Observaciones */}
         <View style={[styles.fieldsCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
@@ -237,14 +292,18 @@ export default function ModalGasto() {
           </RNText>
         </TouchableOpacity>
 
+        {scope === 'personal' && <PrivacyBadge />}
+
         {/* Save button */}
         <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: loading ? 0.6 : 1 }]}
+          style={[styles.saveBtn, { backgroundColor: accentColor, opacity: loading ? 0.6 : 1 }]}
           onPress={handleGuardar}
           disabled={loading}
           activeOpacity={0.8}
         >
-          <RNText style={styles.saveBtnText}>{loading ? 'Guardando...' : 'Guardar gasto'}</RNText>
+          <RNText style={styles.saveBtnText}>
+            {loading ? 'Guardando...' : scope === 'personal' ? 'Registrar gasto personal' : 'Registrar gasto del hogar'}
+          </RNText>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

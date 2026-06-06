@@ -10,6 +10,7 @@ type Props = {
   factura: Factura;
   onPagar: () => void;
   onPress?: () => void;
+  accentColor?: string;
 };
 
 function getVencimientoLabel(dia: number): string {
@@ -21,8 +22,9 @@ function getVencimientoLabel(dia: number): string {
   return `Vence el día ${dia}`;
 }
 
-export function FacturaCard({ factura, onPagar, onPress }: Props) {
+export function FacturaCard({ factura, onPagar, onPress, accentColor }: Props) {
   const colors = useColors();
+  const accent = accentColor ?? colors.primary;
   const esPagada = factura.pago_actual?.estado === 'pagada';
   const esVencida = factura.pago_actual?.estado === 'vencida';
 
@@ -59,9 +61,9 @@ export function FacturaCard({ factura, onPagar, onPress }: Props) {
         {/* Badge */}
         <View style={[
           styles.badge,
-          { backgroundColor: esPagada ? 'rgba(90,122,72,0.12)' : 'rgba(107,45,62,0.1)' },
+          { backgroundColor: esPagada ? 'rgba(90,122,72,0.12)' : `${accent}1A` },
         ]}>
-          <RNText style={[styles.badgeText, { color: esPagada ? colors.sageDark : colors.primary }]}>
+          <RNText style={[styles.badgeText, { color: esPagada ? colors.sageDark : accent }]}>
             {esPagada ? 'Pagada' : 'Pendiente'}
           </RNText>
         </View>
@@ -82,7 +84,7 @@ export function FacturaCard({ factura, onPagar, onPress }: Props) {
 
         {!esPagada ? (
           <TouchableOpacity
-            style={[styles.botonPagar, { backgroundColor: colors.primary }]}
+            style={[styles.botonPagar, { backgroundColor: accent }]}
             onPress={handlePagar}
             activeOpacity={0.8}
           >

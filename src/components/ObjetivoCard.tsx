@@ -8,11 +8,16 @@ import type { Objetivo } from '@/types';
 type Props = {
   objetivo: Objetivo;
   onPress?: () => void;
+  onAportar?: () => void;
   onDelete?: () => void;
+  accentColor?: string;
+  accentLight?: string;
 };
 
-export function ObjetivoCard({ objetivo, onPress, onDelete }: Props) {
+export function ObjetivoCard({ objetivo, onPress, onAportar, onDelete, accentColor, accentLight }: Props) {
   const colors = useColors();
+  const accent = accentColor ?? colors.sage;
+  const accentLightColor = accentLight ?? 'rgba(90,122,72,0.15)';
   const progreso = objetivo.monto_actual / objetivo.monto_objetivo;
   const porcentaje = Math.min(Math.round(progreso * 100), 100);
   const faltan = Math.max(0, objetivo.monto_objetivo - objetivo.monto_actual);
@@ -27,7 +32,7 @@ export function ObjetivoCard({ objetivo, onPress, onDelete }: Props) {
       <View style={styles.topRow}>
         <RNText style={[styles.nombre, { color: colors.textPrimary }]}>{objetivo.nombre}</RNText>
         <View style={styles.topRight}>
-          <RNText style={[styles.porcentaje, { color: colors.sage }]}>{porcentaje}%</RNText>
+          <RNText style={[styles.porcentaje, { color: accent }]}>{porcentaje}%</RNText>
           {onDelete && (
             <TouchableOpacity
               onPress={onDelete}
@@ -41,8 +46,8 @@ export function ObjetivoCard({ objetivo, onPress, onDelete }: Props) {
       </View>
 
       {/* Progress bar */}
-      <View style={[styles.track, { backgroundColor: 'rgba(90,122,72,0.15)' }]}>
-        <View style={[styles.fill, { width: `${porcentaje}%` as `${number}%`, backgroundColor: colors.sage }]} />
+      <View style={[styles.track, { backgroundColor: accentLightColor }]}>
+        <View style={[styles.fill, { width: `${porcentaje}%` as `${number}%`, backgroundColor: accent }]} />
       </View>
 
       {/* Bottom row */}
@@ -53,8 +58,8 @@ export function ObjetivoCard({ objetivo, onPress, onDelete }: Props) {
         </RNText>
         {!objetivo.completado && (
           <TouchableOpacity
-            style={[styles.aportarBtn, { backgroundColor: colors.sage }]}
-            onPress={onPress}
+            style={[styles.aportarBtn, { backgroundColor: accent }]}
+            onPress={onAportar ?? onPress}
             activeOpacity={0.8}
           >
             <RNText style={styles.aportarText}>+ Aportar</RNText>

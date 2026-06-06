@@ -11,10 +11,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
+import { useSpace } from '@/context/SpaceContext';
 import { useAuthStore } from '@/store/auth';
 import { useFacturas } from '@/hooks/useFacturas';
+import { useResumenPersonal } from '@/hooks/useResumenPersonal';
 import { Avatar } from '@/components/ui/Avatar';
 import { FAB } from '@/components/FAB';
+import { ContextSelectorBar } from '@/components/ui/ContextSelectorBar';
+import { ResumenPersonalCard } from '@/components/ResumenPersonalCard';
 import { formatMonto, formatMes } from '@/utils/format';
 import type { Factura } from '@/types';
 
@@ -74,12 +78,14 @@ function BillRow({ factura }: { factura: Factura }) {
 export default function HomeScreen() {
   const router = useRouter();
   const colors = useColors();
+  const { activeContext } = useSpace();
   const { hogar, perfil, companero } = useAuthStore();
   const hoy = new Date();
   const mes = hoy.getMonth() + 1;
   const anio = hoy.getFullYear();
 
   const { facturas, pendientes, vencidas, recargar } = useFacturas(mes, anio);
+  const resumenPersonal = useResumenPersonal(mes, anio);
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = async () => {
@@ -139,7 +145,16 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* HeroCard */}
+        <ContextSelectorBar />
+
+        {/* HeroCard / ResumenPersonalCard */}
+        {activeContext === 'personal' ? (
+          <ResumenPersonalCard
+            totalIngresos={resumenPersonal.totalIngresos}
+            totalGastos={resumenPersonal.totalGastos}
+            disponible={resumenPersonal.disponible}
+          />
+        ) : (
         <View style={[styles.heroCard, { backgroundColor: hc.bg }]}>
           <View style={styles.heroTop}>
             <RNText style={styles.heroHogarName}>
@@ -194,9 +209,10 @@ export default function HomeScreen() {
             ) : null}
           </View>
         </View>
+        )}
 
         {/* Facturas del mes */}
-        {facturas.length > 0 && (
+        {activeContext === 'hogar' && facturas.length > 0 && (
           <View style={styles.seccion}>
             <View style={styles.seccionHeader}>
               <RNText style={[styles.seccionTitle, { color: colors.textPrimary }]}>Facturas del mes</RNText>

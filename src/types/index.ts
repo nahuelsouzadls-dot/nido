@@ -1,3 +1,5 @@
+export type Scope = 'hogar' | 'personal';
+
 export type Perfil = {
   id: string;
   nombre: string;
@@ -27,11 +29,13 @@ export type Gasto = {
   id: string;
   hogar_id: string;
   categoria_id: string | null;
+  categoria_texto: string | null;
   pagado_por: string;
   monto: number;
   descripcion: string;
   fecha: string;
   observaciones: string | null;
+  scope: Scope;
   created_at: string;
   // joined
   categoria?: Categoria;
@@ -54,8 +58,10 @@ export type Factura = {
   monto: number | null;
   dia_vencimiento: number;
   responsable_id: string | null;
+  creado_por: string | null;
   frecuencia: 'mensual' | 'anual';
   activa: boolean;
+  scope: Scope;
   created_at: string;
   // joined
   responsable?: Perfil;
@@ -80,6 +86,7 @@ export type FacturaPago = {
 export type Objetivo = {
   id: string;
   hogar_id: string;
+  user_id: string | null;
   nombre: string;
   descripcion: string | null;
   monto_objetivo: number;
@@ -87,6 +94,7 @@ export type Objetivo = {
   fecha_objetivo: string | null;
   icono: string;
   completado: boolean;
+  scope: Scope;
   created_at: string;
 };
 
@@ -98,6 +106,17 @@ export type ObjetivoAporte = {
   nota: string | null;
   created_at: string;
   perfil?: Perfil;
+};
+
+export type Ingreso = {
+  id: string;
+  user_id: string;
+  hogar_id: string;
+  monto: number;
+  descripcion: string | null;
+  categoria: string | null;
+  fecha: string;
+  created_at: string;
 };
 
 export type ActividadTipo =

@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import type { Factura, FacturaPago } from '@/types';
+import type { Factura, FacturaPago, Scope } from '@/types';
 
-export async function getFacturasConEstado(hogarId: string, mes: number, anio: number) {
+export async function getFacturasConEstado(hogarId: string, mes: number, anio: number, scope: Scope = 'hogar') {
   // Trae todas las facturas activas con su pago del mes actual
   const { data: facturas, error } = await supabase
     .from('facturas')
@@ -11,6 +11,7 @@ export async function getFacturasConEstado(hogarId: string, mes: number, anio: n
     `)
     .eq('hogar_id', hogarId)
     .eq('activa', true)
+    .eq('scope', scope)
     .order('dia_vencimiento', { ascending: true });
 
   if (error) throw error;
@@ -40,7 +41,9 @@ export async function crearFactura(factura: {
   monto?: number | null;
   dia_vencimiento: number;
   responsable_id?: string | null;
+  creado_por?: string | null;
   frecuencia?: 'mensual' | 'anual';
+  scope?: Scope;
 }) {
   const { data, error } = await supabase
     .from('facturas')

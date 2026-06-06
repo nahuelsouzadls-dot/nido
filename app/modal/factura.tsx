@@ -13,13 +13,17 @@ import {
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useSpace } from '@/context/SpaceContext';
 import { Avatar } from '@/components/ui/Avatar';
+import { ScopeSelector } from '@/components/ui/ScopeSelector';
+import { PrivacyBadge } from '@/components/ui/PrivacyBadge';
 import { useAuthStore } from '@/store/auth';
 import { useFacturas } from '@/hooks/useFacturas';
+import type { Scope } from '@/types';
 
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
-const CATEGORIAS: { nombre: string; icon: IconName }[] = [
+const CATEGORIAS_HOGAR: { nombre: string; icon: IconName }[] = [
   { nombre: 'Servicios', icon: 'lightning-bolt' },
   { nombre: 'Internet', icon: 'wifi' },
   { nombre: 'Alquiler', icon: 'home-city-outline' },
@@ -28,21 +32,34 @@ const CATEGORIAS: { nombre: string; icon: IconName }[] = [
   { nombre: 'Otro', icon: 'dots-horizontal' },
 ];
 
+const CATEGORIAS_PERSONAL: { nombre: string; icon: IconName }[] = [
+  { nombre: 'Celular', icon: 'cellphone' },
+  { nombre: 'Streaming', icon: 'television-play' },
+  { nombre: 'Gimnasio', icon: 'dumbbell' },
+  { nombre: 'Software', icon: 'laptop' },
+  { nombre: 'Seguro', icon: 'shield-outline' },
+  { nombre: 'Otro', icon: 'dots-horizontal' },
+];
+
 export default function ModalFactura() {
   const router = useRouter();
   const colors = useColors();
+  const { activeContext } = useSpace();
   const { perfil, companero } = useAuthStore();
   const hoy = new Date();
   const { crear } = useFacturas(hoy.getMonth() + 1, hoy.getFullYear());
 
+  const [scope, setScope] = useState<Scope>(activeContext);
   const [nombre, setNombre] = useState('');
   const [monto, setMonto] = useState('');
   const [diaVencimiento, setDiaVencimiento] = useState('');
   const [responsableId, setResponsableId] = useState(perfil?.id ?? '');
   const [loading, setLoading] = useState(false);
   const [nombreFocused, setNombreFocused] = useState(false);
-  const [montoFocused, setMontoFocused] = useState(false);
   const [diaFocused, setDiaFocused] = useState(false);
+
+  const accentColor = scope === 'personal' ? colors.personal : colors.primary;
+  const categorias = scope === 'personal' ? CATEGORIAS_PERSONAL : CATEGORIAS_HOGAR;
 
   const handleGuardar = async () => {
     if (!nombre.trim() || !diaVencimiento) {
@@ -60,8 +77,10 @@ export default function ModalFactura() {
         nombre: nombre.trim(),
         monto: monto ? parseFloat(monto.replace(',', '.')) : null,
         dia_vencimiento: dia,
-        responsable_id: responsableId || null,
+        responsable_id: scope === 'hogar' ? (responsableId || null) : null,
         frecuencia: 'mensual',
+        scope,
+        creado_por: perfil?.id ?? null,
       });
       router.back();
     } catch {
@@ -80,7 +99,7 @@ export default function ModalFactura() {
         </TouchableOpacity>
         <RNText style={[styles.topTitle, { color: colors.textPrimary }]}>Nueva factura</RNText>
         <TouchableOpacity onPress={handleGuardar} disabled={loading}>
-          <RNText style={[styles.topSave, { color: loading ? colors.textSecondary : colors.primary }]}>
+          <RNText style={[styles.topSave, { color: loading ? colors.textSecondary : accentColor }]}>
             Guardar
           </RNText>
         </TouchableOpacity>
@@ -91,8 +110,11 @@ export default function ModalFactura() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Monto field */}
-        <View style={[styles.montoCard, { backgroundColor: 'rgba(255,255,255,0.55)', borderColor: 'rgba(107,45,62,0.2)' }]}>
+        {/* Monto */}
+        <View style={[styles.montoCard, {
+          backgroundColor: scope === 'personal' ? colors.cardPersonal : 'rgba(255,255,255,0.55)',
+          borderColor: scope === 'personal' ? colors.personalBorder : 'rgba(107,45,62,0.2)',
+        }]}>
           <RNText style={[styles.montoSign, { color: colors.textSecondary }]}>$</RNText>
           <TextInput
             style={[styles.montoInput, { color: colors.textPrimary }]}
@@ -106,6 +128,9 @@ export default function ModalFactura() {
           <RNText style={[styles.montoHint, { color: colors.textSecondary }]}>opcional</RNText>
         </View>
 
+        {/* Scope selector */}
+        <ScopeSelector value={scope} onChange={setScope} />
+
         {/* Campos */}
         <View style={[styles.fieldsCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
           <View style={styles.fieldRow}>
@@ -113,10 +138,10 @@ export default function ModalFactura() {
             <TextInput
               style={[styles.fieldInput, {
                 backgroundColor: nombreFocused ? 'rgba(255,255,255,0.85)' : 'transparent',
-                borderColor: nombreFocused ? colors.primary : 'transparent',
+                borderColor: nombreFocused ? accentColor : 'transparent',
                 color: colors.textPrimary,
               }]}
-              placeholder="Ej: UTE, Alquiler, Internet..."
+              placeholder="Ej: Celular, Gym, UTE..."
               placeholderTextColor={colors.textSecondary}
               value={nombre}
               onChangeText={setNombre}
@@ -132,7 +157,7 @@ export default function ModalFactura() {
             <TextInput
               style={[styles.fieldInput, {
                 backgroundColor: diaFocused ? 'rgba(255,255,255,0.85)' : 'transparent',
-                borderColor: diaFocused ? colors.primary : 'transparent',
+                borderColor: diaFocused ? accentColor : 'transparent',
                 color: colors.textPrimary,
               }]}
               placeholder="Ej: 15"
@@ -147,10 +172,10 @@ export default function ModalFactura() {
           </View>
         </View>
 
-        {/* Categorías */}
+        {/* Categorías por scope */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.chips}>
-            {CATEGORIAS.map((cat) => {
+            {categorias.map((cat) => {
               const selected = nombre === cat.nombre;
               return (
                 <TouchableOpacity
@@ -158,15 +183,17 @@ export default function ModalFactura() {
                   style={[
                     styles.chip,
                     {
-                      backgroundColor: selected ? 'rgba(107,45,62,0.1)' : 'rgba(255,255,255,0.55)',
-                      borderColor: selected ? colors.primary : 'rgba(107,45,62,0.14)',
+                      backgroundColor: selected
+                        ? (scope === 'personal' ? colors.personalLight : 'rgba(107,45,62,0.1)')
+                        : 'rgba(255,255,255,0.55)',
+                      borderColor: selected ? accentColor : 'rgba(107,45,62,0.14)',
                     },
                   ]}
                   onPress={() => setNombre(cat.nombre)}
                   activeOpacity={0.8}
                 >
-                  <MaterialCommunityIcons name={cat.icon} size={14} color={selected ? colors.primary : colors.textSecondary} />
-                  <RNText style={[styles.chipText, { color: selected ? colors.primary : colors.textSecondary }]}>
+                  <MaterialCommunityIcons name={cat.icon} size={14} color={selected ? accentColor : colors.textSecondary} />
+                  <RNText style={[styles.chipText, { color: selected ? accentColor : colors.textSecondary }]}>
                     {cat.nombre}
                   </RNText>
                 </TouchableOpacity>
@@ -175,50 +202,56 @@ export default function ModalFactura() {
           </View>
         </ScrollView>
 
-        {/* Responsable */}
-        <View style={styles.seccion}>
-          <RNText style={[styles.seccionLabel, { color: colors.textSecondary }]}>Responsable</RNText>
-          <View style={styles.pagadoresRow}>
-            {[{ id: '', nombre: 'Cualquiera', avatar_url: null as string | null }, perfil, companero]
-              .filter(Boolean)
-              .map((p) => p && (
-                <TouchableOpacity
-                  key={p.id || 'any'}
-                  style={[
-                    styles.pagador,
-                    {
-                      backgroundColor: responsableId === p.id ? 'rgba(107,45,62,0.1)' : colors.card,
-                      borderColor: responsableId === p.id ? colors.primary : colors.borderSubtle,
-                    },
-                  ]}
-                  onPress={() => setResponsableId(p.id)}
-                  activeOpacity={0.8}
-                >
-                  {p.id ? (
-                    <Avatar nombre={p.nombre} url={p.avatar_url} size={28} color={colors.primaryLight} />
-                  ) : (
-                    <View style={[styles.anyIcon, { backgroundColor: colors.borderSubtle }]}>
-                      <MaterialCommunityIcons name="account-multiple-outline" size={16} color={colors.textSecondary} />
-                    </View>
-                  )}
-                  <RNText style={[styles.pagadorNombre, {
-                    color: responsableId === p.id ? colors.primary : colors.textSecondary,
-                  }]}>
-                    {p.nombre.split(' ')[0]}
-                  </RNText>
-                </TouchableOpacity>
-              ))}
+        {/* Responsable — solo en modo hogar */}
+        {scope === 'hogar' && (
+          <View style={styles.seccion}>
+            <RNText style={[styles.seccionLabel, { color: colors.textSecondary }]}>Responsable</RNText>
+            <View style={styles.pagadoresRow}>
+              {[{ id: '', nombre: 'Cualquiera', avatar_url: null as string | null }, perfil, companero]
+                .filter(Boolean)
+                .map((p) => p && (
+                  <TouchableOpacity
+                    key={p.id || 'any'}
+                    style={[
+                      styles.pagador,
+                      {
+                        backgroundColor: responsableId === p.id ? 'rgba(107,45,62,0.1)' : colors.card,
+                        borderColor: responsableId === p.id ? colors.primary : colors.borderSubtle,
+                      },
+                    ]}
+                    onPress={() => setResponsableId(p.id)}
+                    activeOpacity={0.8}
+                  >
+                    {p.id ? (
+                      <Avatar nombre={p.nombre} url={p.avatar_url} size={28} color={colors.primaryLight} />
+                    ) : (
+                      <View style={[styles.anyIcon, { backgroundColor: colors.borderSubtle }]}>
+                        <MaterialCommunityIcons name="account-multiple-outline" size={16} color={colors.textSecondary} />
+                      </View>
+                    )}
+                    <RNText style={[styles.pagadorNombre, {
+                      color: responsableId === p.id ? colors.primary : colors.textSecondary,
+                    }]}>
+                      {p.nombre.split(' ')[0]}
+                    </RNText>
+                  </TouchableOpacity>
+                ))}
+            </View>
           </View>
-        </View>
+        )}
+
+        {scope === 'personal' && <PrivacyBadge />}
 
         {/* Save button */}
         <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: loading ? 0.6 : 1 }]}
+          style={[styles.saveBtn, { backgroundColor: accentColor, opacity: loading ? 0.6 : 1 }]}
           onPress={handleGuardar}
           disabled={loading}
           activeOpacity={0.8}
         >
-          <RNText style={styles.saveBtnText}>{loading ? 'Guardando...' : 'Crear factura'}</RNText>
+          <RNText style={styles.saveBtnText}>
+            {loading ? 'Guardando...' : scope === 'personal' ? 'Guardar factura personal' : 'Guardar factura'}
+          </RNText>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

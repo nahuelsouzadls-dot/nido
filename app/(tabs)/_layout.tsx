@@ -4,6 +4,7 @@ import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/auth';
+import { useSpace } from '@/context/SpaceContext';
 import { Text } from '@/components/ui/Text';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
@@ -24,12 +25,17 @@ const TABS: Tab[] = [
 
 function NidoTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { activeContext } = useSpace();
 
   return (
     <View style={[styles.bar, { paddingBottom: insets.bottom + 12 }]}>
       {TABS.map((tab, index) => {
         const isFocused = state.index === index;
-        const dotColor = tab.isSage ? '#5A7A48' : '#6B2D3E';
+        const dotColor = tab.isSage
+          ? '#5A7A48'
+          : activeContext === 'personal'
+            ? '#0F6E56'
+            : '#6B2D3E';
 
         return (
           <TouchableOpacity

@@ -12,6 +12,7 @@ import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Shadow } from '@/constants/theme';
 import { useColors } from '@/hooks/useColors';
+import { useSpace } from '@/context/SpaceContext';
 import { useRouter, type Href } from 'expo-router';
 
 type Accion = {
@@ -20,15 +21,24 @@ type Accion = {
   ruta: Href;
 };
 
-const ACCIONES: Accion[] = [
+const ACCIONES_HOGAR: Accion[] = [
   { icon: 'cash-multiple',        label: 'Registrar gasto', ruta: '/modal/gasto' },
   { icon: 'file-document-outline',label: 'Crear factura',   ruta: '/modal/factura' },
   { icon: 'target',               label: 'Crear objetivo',  ruta: '/modal/objetivo' },
 ];
 
+const ACCIONES_PERSONAL: Accion[] = [
+  { icon: 'trending-up',          label: 'Registrar ingreso', ruta: '/modal/ingreso' },
+  { icon: 'cash-multiple',        label: 'Registrar gasto',   ruta: '/modal/gasto' },
+  { icon: 'file-document-outline',label: 'Crear factura',     ruta: '/modal/factura' },
+  { icon: 'target',               label: 'Crear objetivo',    ruta: '/modal/objetivo' },
+];
+
 export function FAB() {
   const router = useRouter();
   const colors = useColors();
+  const { activeContext } = useSpace();
+  const acciones = activeContext === 'personal' ? ACCIONES_PERSONAL : ACCIONES_HOGAR;
   const [abierto, setAbierto] = useState(false);
   const rotacion = useRef(new Animated.Value(0)).current;
   const opacidad = useRef(new Animated.Value(0)).current;
@@ -62,7 +72,7 @@ export function FAB() {
         <Modal transparent animationType="none" onRequestClose={cerrar}>
           <Pressable style={styles.overlay} onPress={cerrar}>
             <Animated.View style={[styles.menu, { backgroundColor: colors.card, opacity: opacidad }]}>
-              {ACCIONES.map((accion) => (
+              {acciones.map((accion) => (
                 <TouchableOpacity
                   key={accion.label}
                   style={styles.accion}

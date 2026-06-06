@@ -10,20 +10,32 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useSpace } from '@/context/SpaceContext';
 import { useAuthStore } from '@/store/auth';
 import { useGastos } from '@/hooks/useGastos';
 import { useFacturas } from '@/hooks/useFacturas';
+import { useResumenPersonal } from '@/hooks/useResumenPersonal';
+import { useMovimientosPersonales } from '@/hooks/useMovimientosPersonales';
+import { ContextSelectorBar } from '@/components/ui/ContextSelectorBar';
+import { PrivacyBadge } from '@/components/ui/PrivacyBadge';
+import { DisponibleHeroCard } from '@/components/DisponibleHeroCard';
+import { MiniStatCard } from '@/components/MiniStatCard';
+import { MovimientoRow } from '@/components/MovimientoRow';
 import { formatMonto, formatMes } from '@/utils/format';
 
 export default function BalanceScreen() {
   const { perfil, companero } = useAuthStore();
   const colors = useColors();
+  const { activeContext } = useSpace();
+  const isPersonal = activeContext === 'personal';
   const hoy = new Date();
   const mes = hoy.getMonth() + 1;
   const anio = hoy.getFullYear();
 
   const { gastos, loading: loadingGastos, recargar: recargarGastos } = useGastos(mes, anio);
   const { facturas, loading: loadingFacturas, recargar: recargarFacturas, pendientes } = useFacturas(mes, anio);
+  const resumenPersonal = useResumenPersonal(mes, anio);
+  const { movimientos } = useMovimientosPersonales(mes, anio);
   const loading = loadingGastos || loadingFacturas;
 
   const [refreshing, setRefreshing] = useState(false);
@@ -66,8 +78,8 @@ export default function BalanceScreen() {
         <RNText style={[styles.title, { color: colors.textPrimary }]}>Balance</RNText>
       </View>
 
-      {/* Sin compañero */}
-      {!companero ? (
+      {/* Sin compañero — solo en modo hogar */}
+      {!isPersonal && !companero ? (
         <View style={styles.emptyContainer}>
           <View style={[styles.emptyIcon, { backgroundColor: 'rgba(107,45,62,0.08)' }]}>
             <MaterialCommunityIcons name="account-plus-outline" size={26} color={colors.primary} />
@@ -79,13 +91,90 @@ export default function BalanceScreen() {
             Invitá a alguien a unirse al hogar para ver el balance compartido
           </RNText>
         </View>
+      ) : isPersonal ? (
+        /* Modo personal */
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.personal} />}
+        >
+          <ContextSelectorBar />
+          <DisponibleHeroCard
+            disponible={resumenPersonal.disponible}
+            totalIngresos={resumenPersonal.totalIngresos}
+          />
+          <View style={styles.miniGrid}>
+            <MiniStatCard
+              label="Cobré"
+              value={resumenPersonal.totalIngresos}
+              valueColor={colors.sage}
+              count={`${resumenPersonal.ingresos.length} ingreso${resumenPersonal.ingresos.length !== 1 ? 's' : ''}`}
+            />
+            <MiniStatCard
+              label="Gasté"
+              value={resumenPersonal.totalGastos}
+              count={`${resumenPersonal.gastos.length} movimiento${resumenPersonal.gastos.length !== 1 ? 's' : ''}`}
+            />
+          </View>
+          {/* Barra de progreso */}
+          {resumenPersonal.totalIngresos > 0 && (
+            <View style={styles.progressSection}>
+              <View style={styles.progressRow}>
+                <RNText style={[styles.progressLabel, { color: colors.textSecondary }]}>
+                  Gastado del ingreso
+                </RNText>
+                <RNText style={[styles.progressCount, { color: colors.personal }]}>
+                  {resumenPersonal.pctGastado}%
+                </RNText>
+              </View>
+              <View style={[styles.progressTrack, { backgroundColor: colors.personalLight }]}>
+                <View style={[
+                  styles.progressFill,
+                  { width: `${resumenPersonal.pctGastado}%` as `${number}%`, backgroundColor: colors.personal },
+                ]} />
+              </View>
+            </View>
+          )}
+          {/* Movimientos */}
+          {movimientos.length > 0 && (
+            <View style={styles.gastosSection}>
+              <RNText style={[styles.gastosTitle, { color: colors.textPrimary }]}>Movimientos</RNText>
+              <View style={[styles.gastosList, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
+                {movimientos.map((m, i) => (
+                  <MovimientoRow
+                    key={m.id}
+                    movimiento={m}
+                    showSeparator={i < movimientos.length - 1}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+          {movimientos.length === 0 && (
+            <View style={styles.emptyContainer}>
+              <View style={[styles.emptyIcon, { backgroundColor: colors.personalLight }]}>
+                <MaterialCommunityIcons name="trending-up" size={26} color={colors.personal} />
+              </View>
+              <RNText style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+                Sin movimientos este mes
+              </RNText>
+              <RNText style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+                Registrá tu primer ingreso o gasto personal
+              </RNText>
+            </View>
+          )}
+          <PrivacyBadge />
+        </ScrollView>
       ) : (
+      /* Modo hogar */
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
       >
+        <ContextSelectorBar />
         {/* BalanceHeroCard */}
         <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
           <RNText style={[styles.heroLabel, { color: colors.textSecondary }]}>
@@ -197,11 +286,13 @@ export default function BalanceScreen() {
   );
 }
 
+
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { flex: 1 },
   content: { padding: 16, gap: 16, paddingBottom: 100 },
   header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, gap: 2 },
+  miniGrid: { flexDirection: 'row', gap: 10 },
   labelCaps: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
   title: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, letterSpacing: -0.4 },
 

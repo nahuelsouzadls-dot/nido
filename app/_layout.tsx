@@ -12,6 +12,7 @@ import {
 } from '@expo-google-fonts/manrope';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { SpaceProvider } from '@/context/SpaceContext';
 import { registrarPushToken } from '@/services/notificaciones';
 import { useColors } from '@/hooks/useColors';
 
@@ -62,6 +63,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
+      <SpaceProvider>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
@@ -79,10 +81,15 @@ export default function RootLayout() {
           options={{ presentation: 'modal', headerShown: false }}
         />
         <Stack.Screen
+          name="modal/ingreso"
+          options={{ presentation: 'modal', headerShown: false }}
+        />
+        <Stack.Screen
           name="modal/scan"
           options={{ presentation: 'fullScreenModal', headerShown: false }}
         />
       </Stack>
+      </SpaceProvider>
     </GestureHandlerRootView>
   );
 }

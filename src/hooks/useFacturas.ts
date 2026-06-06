@@ -10,9 +10,10 @@ import { registrarActividad } from '@/services/actividad';
 import { notificarCompanero } from '@/services/notificaciones';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
-import type { Factura } from '@/types';
+import type { Factura, Scope } from '@/types';
 
-export function useFacturas(mes: number, anio: number) {
+export function useFacturas(mes: number, anio: number, options?: { scope?: Scope }) {
+  const scope = options?.scope ?? 'hogar';
   const { hogar, perfil } = useAuthStore();
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,14 +22,14 @@ export function useFacturas(mes: number, anio: number) {
     if (!hogar) return;
     setLoading(true);
     try {
-      // Actualiza vencidas antes de cargar para que el estado sea correcto
-      await actualizarVencidas(hogar.id, mes, anio);
-      const data = await getFacturasConEstado(hogar.id, mes, anio);
+      // Solo actualizar vencidas para facturas del hogar (las personales no comparten estado)
+      if (scope === 'hogar') await actualizarVencidas(hogar.id, mes, anio);
+      const data = await getFacturasConEstado(hogar.id, mes, anio, scope);
       setFacturas(data);
     } finally {
       setLoading(false);
     }
-  }, [hogar, mes, anio]);
+  }, [hogar, mes, anio, scope]);
 
   useEffect(() => {
     cargar();
@@ -47,7 +48,7 @@ export function useFacturas(mes: number, anio: number) {
 
     const hogarId = hogar.id;
     const channel = supabase
-      .channel(`facturas-${hogarId}-${mes}-${anio}-${instanceId.current}`)
+      .channel(`facturas-${hogarId}-${mes}-${anio}-${scope}-${instanceId.current}`)
       .on(
         'postgres_changes',
         {
@@ -74,7 +75,7 @@ export function useFacturas(mes: number, anio: number) {
       supabase.removeChannel(channel);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hogar?.id, mes, anio]);
+  }, [hogar?.id, mes, anio, scope]);
 
   const crear = useCallback(
     async (factura: Omit<Factura, 'id' | 'created_at' | 'hogar_id' | 'responsable' | 'pago_actual' | 'activa'>) => {
@@ -82,14 +83,17 @@ export function useFacturas(mes: number, anio: number) {
 
       const nueva = await crearFactura({ ...factura, hogar_id: hogar.id });
 
-      await registrarActividad({
-        hogar_id: hogar.id,
-        perfil_id: perfil.id,
-        tipo: 'factura_creada',
-        titulo: `${perfil.nombre} creó una factura`,
-        descripcion: factura.nombre,
-        metadata: { factura_id: nueva.id },
-      });
+      // Facturas personales son privadas — no se registran en actividad
+      if (factura.scope !== 'personal') {
+        await registrarActividad({
+          hogar_id: hogar.id,
+          perfil_id: perfil.id,
+          tipo: 'factura_creada',
+          titulo: `${perfil.nombre} creó una factura`,
+          descripcion: factura.nombre,
+          metadata: { factura_id: nueva.id },
+        });
+      }
 
       await cargar();
       return nueva;
@@ -102,6 +106,8 @@ export function useFacturas(mes: number, anio: number) {
       if (!hogar || !perfil) return;
 
       const factura = facturas.find((f) => f.id === facturaId);
+      // Snapshot the previous pago_actual so we can revert if the network call fails
+      const pagoAnterior = factura?.pago_actual ?? undefined;
 
       // Optimistic update: flip to 'pagada' before the network round-trip
       // so the UI responds instantly. cargar() at the end reconciles with
@@ -129,26 +135,38 @@ export function useFacturas(mes: number, anio: number) {
         )
       );
 
-      await pagarFactura(facturaId, hogar.id, mes, anio, perfil.id, monto);
+      try {
+        await pagarFactura(facturaId, hogar.id, mes, anio, perfil.id, monto);
 
-      await registrarActividad({
-        hogar_id: hogar.id,
-        perfil_id: perfil.id,
-        tipo: 'factura_pagada',
-        titulo: `${perfil.nombre} pagó ${factura?.nombre ?? 'una factura'}`,
-        descripcion: monto ? `$${monto.toLocaleString('es-UY')}` : undefined,
-        metadata: { factura_id: facturaId },
-      });
+        await registrarActividad({
+          hogar_id: hogar.id,
+          perfil_id: perfil.id,
+          tipo: 'factura_pagada',
+          titulo: `${perfil.nombre} pagó ${factura?.nombre ?? 'una factura'}`,
+          descripcion: monto ? `$${monto.toLocaleString('es-UY')}` : undefined,
+          metadata: { factura_id: facturaId },
+        });
 
-      await notificarCompanero(
-        hogar.id,
-        perfil.id,
-        `${perfil.nombre} pagó ${factura?.nombre ?? 'una factura'}`,
-        monto ? `Monto: $${monto.toLocaleString('es-UY')}` : 'Factura pagada',
-      );
-
-      // Re-fetch to replace the optimistic record with the real server state
-      await cargar();
+        await notificarCompanero(
+          hogar.id,
+          perfil.id,
+          `${perfil.nombre} pagó ${factura?.nombre ?? 'una factura'}`,
+          monto ? `Monto: $${monto.toLocaleString('es-UY')}` : 'Factura pagada',
+        );
+      } catch (e) {
+        // Revert the optimistic update so the card goes back to its real state
+        setFacturas((prev) =>
+          prev.map((f) =>
+            f.id !== facturaId ? f : { ...f, pago_actual: pagoAnterior }
+          )
+        );
+        // Re-throw so the calling screen can show an error Alert
+        throw e;
+      } finally {
+        // Always reconcile with server state — on success this replaces the
+        // optimistic record; on failure this ensures we're back in sync.
+        await cargar().catch(() => {});
+      }
     },
     [hogar, perfil, facturas, mes, anio, cargar],
   );

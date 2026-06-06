@@ -1,11 +1,12 @@
 import { supabase } from '@/lib/supabase';
-import type { Objetivo, ObjetivoAporte } from '@/types';
+import type { Objetivo, ObjetivoAporte, Scope } from '@/types';
 
-export async function getObjetivos(hogarId: string) {
+export async function getObjetivos(hogarId: string, scope: Scope = 'hogar') {
   const { data, error } = await supabase
     .from('objetivos')
     .select('*')
     .eq('hogar_id', hogarId)
+    .eq('scope', scope)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -14,11 +15,13 @@ export async function getObjetivos(hogarId: string) {
 
 export async function crearObjetivo(objetivo: {
   hogar_id: string;
+  user_id?: string | null;
   nombre: string;
   descripcion?: string | null;
   monto_objetivo: number;
   fecha_objetivo?: string | null;
   icono: string;
+  scope?: Scope;
 }) {
   const { data, error } = await supabase
     .from('objetivos')

@@ -1,9 +1,9 @@
 import { supabase } from '@/lib/supabase';
-import type { Gasto } from '@/types';
+import type { Gasto, Scope } from '@/types';
 
-export async function getGastosMes(hogarId: string, mes: number, anio: number) {
+export async function getGastosMes(hogarId: string, mes: number, anio: number, scope: Scope = 'hogar') {
   const desde = new Date(anio, mes - 1, 1).toISOString().split('T')[0];
-  const hasta = new Date(anio, mes, 0).toISOString().split('T')[0]; // día 0 del mes siguiente = último día del mes
+  const hasta = new Date(anio, mes, 0).toISOString().split('T')[0];
 
   const { data, error } = await supabase
     .from('gastos')
@@ -14,6 +14,7 @@ export async function getGastosMes(hogarId: string, mes: number, anio: number) {
       archivos:gastos_archivos(*)
     `)
     .eq('hogar_id', hogarId)
+    .eq('scope', scope)
     .gte('fecha', desde)
     .lte('fecha', hasta)
     .order('fecha', { ascending: false });
@@ -25,11 +26,13 @@ export async function getGastosMes(hogarId: string, mes: number, anio: number) {
 export async function crearGasto(gasto: {
   hogar_id: string;
   categoria_id: string | null;
+  categoria_texto?: string | null;
   pagado_por: string;
   monto: number;
   descripcion: string;
   fecha: string;
   observaciones?: string | null;
+  scope?: Scope;
 }) {
   const { data, error } = await supabase
     .from('gastos')

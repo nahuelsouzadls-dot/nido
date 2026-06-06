@@ -16,8 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
+import { useSpace } from '@/context/SpaceContext';
 import { FacturaCard } from '@/components/FacturaCard';
 import { FAB } from '@/components/FAB';
+import { ContextSelectorBar } from '@/components/ui/ContextSelectorBar';
+import { PrivacyBadge } from '@/components/ui/PrivacyBadge';
 import { useFacturas } from '@/hooks/useFacturas';
 import { formatMes } from '@/utils/format';
 
@@ -26,11 +29,13 @@ type Filtro = 'todas' | 'pendientes' | 'pagadas';
 export default function FacturasScreen() {
   const router = useRouter();
   const colors = useColors();
+  const { activeContext } = useSpace();
+  const isPersonal = activeContext === 'personal';
   const hoy = new Date();
   const mes = hoy.getMonth() + 1;
   const anio = hoy.getFullYear();
 
-  const { facturas, pagar, eliminar, recargar, todasPagadas } = useFacturas(mes, anio);
+  const { facturas, pagar, eliminar, recargar, todasPagadas } = useFacturas(mes, anio, { scope: activeContext });
   const [filtro, setFiltro] = useState<Filtro>('todas');
   const [refreshing, setRefreshing] = useState(false);
   const [modalPago, setModalPago] = useState<{ id: string; nombre: string } | null>(null);
@@ -52,7 +57,14 @@ export default function FacturasScreen() {
     if (montoPredeterminado) {
       Alert.alert(`Pagar ${nombre}`, `¿Confirmar pago de $${montoPredeterminado.toLocaleString('es-UY')}?`, [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Confirmar', onPress: () => pagar(facturaId, montoPredeterminado) },
+        {
+          text: 'Confirmar',
+          onPress: () => {
+            pagar(facturaId, montoPredeterminado).catch(() => {
+              Alert.alert('Error al pagar', 'No se pudo registrar el pago. Intentá de nuevo.');
+            });
+          },
+        },
       ]);
     } else if (Platform.OS === 'ios') {
       Alert.prompt(
@@ -64,7 +76,11 @@ export default function FacturasScreen() {
             text: 'Pagar',
             onPress: (monto: string | undefined) => {
               const m = parseFloat(monto?.replace(',', '.') ?? '0');
-              if (m > 0) pagar(facturaId, m);
+              if (m > 0) {
+                pagar(facturaId, m).catch(() => {
+                  Alert.alert('Error al pagar', 'No se pudo registrar el pago. Intentá de nuevo.');
+                });
+              }
             },
           },
         ],
@@ -81,8 +97,15 @@ export default function FacturasScreen() {
   const confirmarPagoModal = () => {
     if (!modalPago) return;
     const m = parseFloat(montoPago.replace(',', '.'));
-    if (m > 0) pagar(modalPago.id, m);
+    if (isNaN(m) || m <= 0) {
+      Alert.alert('Monto inválido', 'Ingresá un monto mayor a cero.');
+      return;
+    }
+    const { id } = modalPago;
     setModalPago(null);
+    pagar(id, m).catch(() => {
+      Alert.alert('Error al pagar', 'No se pudo registrar el pago. Intentá de nuevo.');
+    });
   };
 
   const handleEliminar = (id: string, nombre: string) => {
@@ -106,7 +129,9 @@ export default function FacturasScreen() {
           <RNText style={[styles.labelCaps, { color: colors.textSecondary }]}>
             {formatMes(mes, anio).toUpperCase()}
           </RNText>
-          <RNText style={[styles.title, { color: colors.textPrimary }]}>Facturas</RNText>
+          <RNText style={[styles.title, { color: colors.textPrimary }]}>
+            {isPersonal ? 'Mis facturas' : 'Facturas'}
+          </RNText>
         </View>
         {todasPagadas ? (
           <View style={[styles.allDoneBadge, { backgroundColor: colors.sageLight }]}>
@@ -122,6 +147,11 @@ export default function FacturasScreen() {
             <MaterialCommunityIcons name="plus" size={18} color="#fff" />
           </TouchableOpacity>
         )}
+      </View>
+
+      {/* Context selector */}
+      <View style={{ paddingHorizontal: 16 }}>
+        <ContextSelectorBar />
       </View>
 
       {/* Filter pills */}
@@ -156,24 +186,34 @@ export default function FacturasScreen() {
       >
         {facturasVisibles.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <View style={[styles.emptyIcon, { backgroundColor: 'rgba(107,45,62,0.08)' }]}>
-              <MaterialCommunityIcons name="file-document-outline" size={26} color={colors.primary} />
+            <View style={[styles.emptyIcon, {
+              backgroundColor: isPersonal ? colors.personalLight : 'rgba(107,45,62,0.08)',
+            }]}>
+              <MaterialCommunityIcons
+                name="file-document-outline"
+                size={26}
+                color={isPersonal ? colors.personal : colors.primary}
+              />
             </View>
             <RNText style={[styles.emptyTitle, { color: colors.textPrimary }]}>
-              {filtro === 'todas' ? 'Sin facturas todavía' : `Sin facturas ${filtro}`}
+              {filtro === 'todas'
+                ? (isPersonal ? 'Sin facturas personales' : 'Sin facturas todavía')
+                : `Sin facturas ${filtro}`}
             </RNText>
             {filtro === 'todas' && (
               <RNText style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-                Registrá tu primera factura recurrente
+                {isPersonal ? 'Plan celular, gimnasio, suscripciones...' : 'Registrá tu primera factura recurrente'}
               </RNText>
             )}
             {filtro === 'todas' && (
               <TouchableOpacity
-                style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
+                style={[styles.emptyBtn, { backgroundColor: isPersonal ? colors.personal : colors.primary }]}
                 onPress={() => router.push('/modal/factura')}
                 activeOpacity={0.8}
               >
-                <RNText style={styles.emptyBtnText}>Agregar primera factura</RNText>
+                <RNText style={styles.emptyBtnText}>
+                  {isPersonal ? 'Agregar primera factura personal' : 'Agregar primera factura'}
+                </RNText>
               </TouchableOpacity>
             )}
           </View>
@@ -182,6 +222,7 @@ export default function FacturasScreen() {
             <FacturaCard
               key={factura.id}
               factura={factura}
+              accentColor={isPersonal ? colors.personal : undefined}
               onPagar={() => handlePagar(factura.id, factura.nombre, factura.monto)}
               onPress={() =>
                 Alert.alert(factura.nombre, undefined, [
@@ -192,6 +233,7 @@ export default function FacturasScreen() {
             />
           ))
         )}
+        {isPersonal && <PrivacyBadge />}
       </ScrollView>
 
       {/* Payment modal for Android */}

@@ -4,9 +4,10 @@ import { registrarActividad } from '@/services/actividad';
 import { notificarCompanero } from '@/services/notificaciones';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
-import type { Gasto } from '@/types';
+import type { Gasto, Scope } from '@/types';
 
-export function useGastos(mes: number, anio: number) {
+export function useGastos(mes: number, anio: number, options?: { scope?: Scope }) {
+  const scope = options?.scope ?? 'hogar';
   const { hogar, perfil } = useAuthStore();
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,14 +18,14 @@ export function useGastos(mes: number, anio: number) {
     setLoading(true);
     setError(null);
     try {
-      const data = await getGastosMes(hogar.id, mes, anio);
+      const data = await getGastosMes(hogar.id, mes, anio, scope);
       setGastos(data);
     } catch {
       setError('Error cargando gastos');
     } finally {
       setLoading(false);
     }
-  }, [hogar, mes, anio]);
+  }, [hogar, mes, anio, scope]);
 
   useEffect(() => {
     cargar();
@@ -41,7 +42,7 @@ export function useGastos(mes: number, anio: number) {
 
     const hogarId = hogar.id;
     const channel = supabase
-      .channel(`gastos-${hogarId}-${mes}-${anio}-${instanceId.current}`)
+      .channel(`gastos-${hogarId}-${mes}-${anio}-${scope}-${instanceId.current}`)
       .on(
         'postgres_changes',
         {
@@ -58,7 +59,7 @@ export function useGastos(mes: number, anio: number) {
       supabase.removeChannel(channel);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hogar?.id, mes, anio]);
+  }, [hogar?.id, mes, anio, scope]);
 
   const agregar = useCallback(
     async (gasto: Omit<Gasto, 'id' | 'created_at' | 'hogar_id' | 'perfil' | 'categoria' | 'archivos'>) => {
@@ -66,21 +67,24 @@ export function useGastos(mes: number, anio: number) {
 
       const nuevo = await crearGasto({ ...gasto, hogar_id: hogar.id });
 
-      await registrarActividad({
-        hogar_id: hogar.id,
-        perfil_id: perfil.id,
-        tipo: 'gasto_agregado',
-        titulo: `${perfil.nombre} registró un gasto`,
-        descripcion: `${gasto.descripcion} · $${gasto.monto.toLocaleString('es-UY')}`,
-        metadata: { gasto_id: nuevo.id, monto: gasto.monto },
-      });
+      // Gastos personales son privados — no se registran en actividad ni notifican al compañero
+      if (gasto.scope !== 'personal') {
+        await registrarActividad({
+          hogar_id: hogar.id,
+          perfil_id: perfil.id,
+          tipo: 'gasto_agregado',
+          titulo: `${perfil.nombre} registró un gasto`,
+          descripcion: `${gasto.descripcion} · $${gasto.monto.toLocaleString('es-UY')}`,
+          metadata: { gasto_id: nuevo.id, monto: gasto.monto },
+        });
 
-      await notificarCompanero(
-        hogar.id,
-        perfil.id,
-        `${perfil.nombre} registró un gasto`,
-        `${gasto.descripcion} · $${gasto.monto.toLocaleString('es-UY')}`,
-      );
+        await notificarCompanero(
+          hogar.id,
+          perfil.id,
+          `${perfil.nombre} registró un gasto`,
+          `${gasto.descripcion} · $${gasto.monto.toLocaleString('es-UY')}`,
+        );
+      }
 
       await cargar();
       return nuevo;

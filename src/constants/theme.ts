@@ -33,6 +33,14 @@ export const LightColors = {
   heroWarn: '#FFCBA4',
   heroUrgent: '#FFBCB0',
 
+  // Espacio Personal — teal oscuro
+  personal:       '#0F6E56',
+  personalDark:   '#085041',
+  personalLight:  'rgba(15,110,86,0.1)',
+  personalBorder: 'rgba(15,110,86,0.2)',
+  cardPersonal:   'rgba(15,110,86,0.07)',
+  heroPersonal:   '#E1F5EE',
+
   // Legacy aliases used throughout existing code
   success: '#5A7A48',
   successLight: 'rgba(90,122,72,0.1)',

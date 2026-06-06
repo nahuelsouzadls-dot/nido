@@ -12,16 +12,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
+import { useSpace } from '@/context/SpaceContext';
 import { Text } from '@/components/ui/Text';
 import { ObjetivoCard } from '@/components/ObjetivoCard';
+import { ContextSelectorBar } from '@/components/ui/ContextSelectorBar';
 import { useObjetivos } from '@/hooks/useObjetivos';
 import { formatMes } from '@/utils/format';
 
 export default function ObjetivosScreen() {
   const router = useRouter();
   const colors = useColors();
+  const { activeContext } = useSpace();
+  const isPersonal = activeContext === 'personal';
+  const accentColor = isPersonal ? colors.personal : colors.sage;
+  const accentLight = isPersonal ? 'rgba(15,110,86,0.15)' : 'rgba(90,122,72,0.15)';
   const hoy = new Date();
-  const { objetivos, recargar, eliminar } = useObjetivos();
+  const { objetivos, recargar, eliminar } = useObjetivos({ scope: activeContext });
   const [refreshing, setRefreshing] = useState(false);
 
   const activos = objetivos.filter((o) => !o.completado);
@@ -60,7 +66,7 @@ export default function ObjetivosScreen() {
           <Text style={[styles.title, { color: colors.textPrimary }]}>Objetivos</Text>
         </View>
         <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: colors.sage }]}
+          style={[styles.addBtn, { backgroundColor: accentColor }]}
           onPress={() => router.push('/modal/objetivo')}
           activeOpacity={0.8}
         >
@@ -74,24 +80,30 @@ export default function ObjetivosScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.sage} />}
       >
+        <ContextSelectorBar />
+
         {objetivos.length === 0 ? (
           /* Empty state */
           <View style={styles.emptyContainer}>
-            <View style={[styles.emptyIcon, { backgroundColor: colors.sageLight }]}>
-              <MaterialCommunityIcons name="target" size={26} color={colors.sage} />
+            <View style={[styles.emptyIcon, { backgroundColor: isPersonal ? colors.personalLight : colors.sageLight }]}>
+              <MaterialCommunityIcons name="target" size={26} color={accentColor} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
-              ¿Qué están construyendo?
+              {isPersonal ? '¿A qué estás apuntando?' : '¿Qué están construyendo?'}
             </Text>
             <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-              Creá un objetivo compartido y vean cómo avanzan juntos.
+              {isPersonal
+                ? 'Un viaje, una notebook, un fondo de emergencia.'
+                : 'Creá un objetivo compartido y vean cómo avanzan juntos.'}
             </Text>
             <TouchableOpacity
-              style={[styles.emptyBtn, { backgroundColor: colors.sage }]}
+              style={[styles.emptyBtn, { backgroundColor: accentColor }]}
               onPress={() => router.push('/modal/objetivo')}
               activeOpacity={0.8}
             >
-              <Text style={styles.emptyBtnText}>Crear primer objetivo</Text>
+              <Text style={styles.emptyBtnText}>
+                {isPersonal ? 'Crear primer objetivo personal' : 'Crear primer objetivo'}
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -100,22 +112,36 @@ export default function ObjetivosScreen() {
               <ObjetivoCard
                 key={obj.id}
                 objetivo={obj}
-                onPress={() => router.push('/modal/objetivo')}
+                accentColor={accentColor}
+                accentLight={accentLight}
+                onAportar={() => router.push({
+                  pathname: '/modal/objetivo',
+                  params: {
+                    id: obj.id,
+                    modo: 'aportar',
+                    nombre: obj.nombre,
+                    montoObjetivo: obj.monto_objetivo.toString(),
+                    montoActual: obj.monto_actual.toString(),
+                  },
+                })}
                 onDelete={() => handleEliminar(obj.id, obj.nombre)}
               />
             ))}
 
             {/* Add card */}
             <TouchableOpacity
-              style={[styles.addCard, { borderColor: 'rgba(90,122,72,0.3)' }]}
+              style={[styles.addCard, { borderColor: isPersonal ? 'rgba(15,110,86,0.3)' : 'rgba(90,122,72,0.3)',
+                backgroundColor: isPersonal ? 'rgba(15,110,86,0.06)' : 'rgba(90,122,72,0.06)' }]}
               onPress={() => router.push('/modal/objetivo')}
               activeOpacity={0.8}
             >
-              <MaterialCommunityIcons name="plus" size={20} color={colors.sage} />
+              <MaterialCommunityIcons name="plus" size={20} color={accentColor} />
               <View>
-                <Text style={[styles.addCardTitle, { color: colors.sage }]}>Nuevo objetivo</Text>
+                <Text style={[styles.addCardTitle, { color: accentColor }]}>
+                  {isPersonal ? 'Nuevo objetivo personal' : 'Nuevo objetivo'}
+                </Text>
                 <Text style={[styles.addCardSubtext, { color: colors.textSecondary }]}>
-                  ¿Qué están ahorrando juntos?
+                  {isPersonal ? '¿A qué estás apuntando?' : '¿Qué están ahorrando juntos?'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -129,6 +155,8 @@ export default function ObjetivosScreen() {
                   <ObjetivoCard
                     key={obj.id}
                     objetivo={obj}
+                    accentColor={accentColor}
+                    accentLight={accentLight}
                     onDelete={() => handleEliminar(obj.id, obj.nombre)}
                   />
                 ))}
