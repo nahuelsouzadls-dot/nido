@@ -1,27 +1,61 @@
 import React from 'react';
 import { Tabs, Redirect } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
-import { useColors } from '@/hooks/useColors';
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/auth';
 import { Text } from '@/components/ui/Text';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
-type TabIconProps = {
-  emoji: string;
-  focused: boolean;
+type Tab = {
+  name: string;
+  label: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  isSage?: boolean;
 };
 
-function TabIcon({ emoji, focused }: TabIconProps) {
-  const colors = useColors();
+const TABS: Tab[] = [
+  { name: 'index',    label: 'Hogar',    icon: 'home-outline' },
+  { name: 'facturas', label: 'Facturas', icon: 'file-document-outline' },
+  { name: 'objetivos',label: 'Objetivos',icon: 'target',         isSage: true },
+  { name: 'balance',  label: 'Balance',  icon: 'scale-balance' },
+  { name: 'perfil',   label: 'Perfil',   icon: 'account-circle-outline' },
+];
+
+function NidoTabBar({ state, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={[styles.tabIcon, focused && { backgroundColor: colors.primaryLight }]}>
-      <Text style={styles.emoji}>{emoji}</Text>
+    <View style={[styles.bar, { paddingBottom: insets.bottom + 12 }]}>
+      {TABS.map((tab, index) => {
+        const isFocused = state.index === index;
+        const dotColor = tab.isSage ? '#5A7A48' : '#6B2D3E';
+
+        return (
+          <TouchableOpacity
+            key={tab.name}
+            style={[styles.item, { opacity: isFocused ? 1 : 0.3 }]}
+            onPress={() => navigation.navigate(tab.name)}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons
+              name={tab.icon}
+              size={22}
+              color="#F5F0F2"
+            />
+            {isFocused && (
+              <View style={[styles.dot, { backgroundColor: dotColor }]} />
+            )}
+            <Text style={styles.label}>{tab.label}</Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
 
 export default function TabsLayout() {
   const { session, loading, hogar } = useAuthStore();
-  const colors = useColors();
 
   if (!loading && !session) {
     return <Redirect href="/(auth)/login" />;
@@ -33,67 +67,39 @@ export default function TabsLayout() {
 
   return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          paddingTop: 8,
-          height: 88,
-          paddingBottom: 24,
-        },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textTertiary,
-        tabBarLabelStyle: styles.tabLabel,
-      }}
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => <NidoTabBar {...props} />}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Inicio',
-          tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon emoji="🏡" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="facturas"
-        options={{
-          title: 'Facturas',
-          tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon emoji="🧾" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="balance"
-        options={{
-          title: 'Balance',
-          tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon emoji="⚖️" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="perfil"
-        options={{
-          title: 'Perfil',
-          tabBarIcon: ({ focused }: { focused: boolean }) => <TabIcon emoji="👤" focused={focused} />,
-        }}
-      />
+      <Tabs.Screen name="index" />
+      <Tabs.Screen name="facturas" />
+      <Tabs.Screen name="objetivos" />
+      <Tabs.Screen name="balance" />
+      <Tabs.Screen name="perfil" />
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 2,
+  bar: {
+    backgroundColor: '#1E0A10',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 8,
   },
-  tabIcon: {
-    width: 40,
-    height: 32,
+  item: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 10,
+    gap: 2,
   },
-  emoji: {
-    fontSize: 20,
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    marginTop: 1,
+  },
+  label: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 7,
+    color: '#F5F0F2',
   },
 });

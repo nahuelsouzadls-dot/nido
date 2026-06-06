@@ -1,28 +1,79 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   ScrollView,
   StyleSheet,
   RefreshControl,
   TouchableOpacity,
+  Text as RNText,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Spacing } from '@/constants/theme';
 import { useColors } from '@/hooks/useColors';
-import { Text } from '@/components/ui/Text';
-import { Card } from '@/components/ui/Card';
-import { Avatar } from '@/components/ui/Avatar';
-import { ActividadItem } from '@/components/ActividadItem';
-import { ObjetivoCard } from '@/components/ObjetivoCard';
-import { FAB } from '@/components/FAB';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { useAuthStore } from '@/store/auth';
 import { useActividad } from '@/hooks/useActividad';
 import { useFacturas } from '@/hooks/useFacturas';
 import { useObjetivos } from '@/hooks/useObjetivos';
 import { useGastos } from '@/hooks/useGastos';
+import { Avatar } from '@/components/ui/Avatar';
+import { ActividadItem } from '@/components/ActividadItem';
+import { FAB } from '@/components/FAB';
 import { formatMonto, formatMes } from '@/utils/format';
+import type { Factura } from '@/types';
+
+// ─── Hero state logic ─────────────────────────────────────────────────────────
+
+type HeroState = 'calm' | 'warn' | 'urgent';
+
+function getHeroState(days: number | null): HeroState {
+  if (days === null || days > 7) return 'calm';
+  if (days >= 3) return 'warn';
+  return 'urgent';
+}
+
+const HERO_COLORS: Record<HeroState, {
+  bg: string;
+  badgeBg: string;
+  badgeColor: string;
+  pendingNum: string;
+}> = {
+  calm:   { bg: '#6B2D3E', badgeBg: 'rgba(143,175,122,0.22)', badgeColor: '#C8EAB0', pendingNum: 'rgba(255,255,255,0.35)' },
+  warn:   { bg: '#8B3A20', badgeBg: 'rgba(255,200,120,0.20)', badgeColor: '#FFD9A0', pendingNum: '#FFCBA4' },
+  urgent: { bg: '#5C1A1A', badgeBg: 'rgba(255,120,100,0.18)', badgeColor: '#FFBCB0', pendingNum: '#FFBCB0' },
+};
+
+const HERO_BADGE: Record<HeroState, string> = {
+  calm: 'Todo al día', warn: 'Atención', urgent: 'Vence hoy',
+};
+
+// ─── BillRow ──────────────────────────────────────────────────────────────────
+
+function BillRow({ factura }: { factura: Factura }) {
+  const colors = useColors();
+  const isPagada = factura.pago_actual?.estado === 'pagada';
+
+  return (
+    <View style={[styles.billRow, { borderLeftColor: isPagada ? colors.sage : colors.primary }]}>
+      <View style={{ flex: 1 }}>
+        <RNText style={[styles.billName, { color: colors.textPrimary }]}>{factura.nombre}</RNText>
+        <RNText style={[styles.billDue, { color: colors.textSecondary }]}>
+          {isPagada ? 'Pagada' : `Día ${factura.dia_vencimiento}`}
+        </RNText>
+      </View>
+      <View style={[
+        styles.billBadge,
+        { backgroundColor: isPagada ? 'rgba(90,122,72,0.12)' : 'rgba(107,45,62,0.1)' },
+      ]}>
+        <RNText style={[styles.billBadgeText, { color: isPagada ? colors.sageDark : colors.primary }]}>
+          {isPagada ? 'Listo' : 'Pendiente'}
+        </RNText>
+      </View>
+    </View>
+  );
+}
+
+// ─── HomeScreen ───────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -33,7 +84,7 @@ export default function HomeScreen() {
   const anio = hoy.getFullYear();
 
   const { actividad, recargar: recargarAct } = useActividad();
-  const { facturas, pendientes, vencidas, todasPagadas } = useFacturas(mes, anio);
+  const { facturas, pendientes, vencidas } = useFacturas(mes, anio);
   const { objetivos } = useObjetivos();
   const { totalMes } = useGastos(mes, anio);
 
@@ -45,7 +96,33 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
+  const daysUntilNextDue = useMemo(() => {
+    if (vencidas.length > 0) return 0;
+    if (pendientes.length === 0) return null;
+    const diaHoy = hoy.getDate();
+    const days = pendientes.map((f) => f.dia_vencimiento - diaHoy).filter((d) => d >= 0);
+    return days.length > 0 ? Math.min(...days) : null;
+  }, [pendientes, vencidas]);
+
+  const proximaFactura = useMemo((): Factura | null => {
+    if (vencidas.length > 0) return vencidas[0];
+    if (pendientes.length === 0) return null;
+    const diaHoy = hoy.getDate();
+    const conDias = pendientes
+      .map((f) => ({ f, d: f.dia_vencimiento - diaHoy }))
+      .filter(({ d }) => d >= 0)
+      .sort((a, b) => a.d - b.d);
+    return conDias[0]?.f ?? null;
+  }, [pendientes, vencidas]);
+
+  const heroState = getHeroState(daysUntilNextDue);
+  const hc = HERO_COLORS[heroState];
+
+  const pagadas = facturas.filter((f) => f.pago_actual?.estado === 'pagada');
   const objetivosActivos = objetivos.filter((o) => !o.completado).slice(0, 2);
+  const nombre = perfil?.nombre.split(' ')[0] ?? 'Vos';
+  const hora = hoy.getHours();
+  const saludo = hora < 12 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches';
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
@@ -56,144 +133,145 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={styles.headerRow}>
           <View>
-            <Text variant="largeTitle" style={{ fontWeight: '800' }}>
-              {hogar?.nombre ?? 'Nuestro Hogar'}
-            </Text>
-            <Text variant="subhead" color={colors.textSecondary}>
-              {formatMes(mes, anio)}
-            </Text>
+            <RNText style={[styles.labelCaps, { color: colors.textSecondary }]}>
+              {formatMes(mes, anio).toUpperCase()}
+            </RNText>
+            <RNText style={[styles.greeting, { color: colors.textPrimary }]}>
+              {saludo}, {nombre}
+            </RNText>
           </View>
           <View style={styles.avatares}>
-            {perfil ? <Avatar nombre={perfil.nombre} url={perfil.avatar_url} size={38} /> : null}
-            {companero ? (
-              <Avatar
-                nombre={companero.nombre}
-                url={companero.avatar_url}
-                size={38}
-                color="#FF9F0A"
-              />
+            {perfil ? <Avatar nombre={perfil.nombre} url={perfil.avatar_url} size={36} color={colors.primaryLight} /> : null}
+            {companero ? <Avatar nombre={companero.nombre} url={companero.avatar_url} size={36} color={colors.primaryLight} /> : null}
+          </View>
+        </View>
+
+        {/* HeroCard */}
+        <View style={[styles.heroCard, { backgroundColor: hc.bg }]}>
+          <View style={styles.heroTop}>
+            <RNText style={styles.heroHogarName}>
+              {hogar?.nombre ?? 'Nuestro Hogar'}
+            </RNText>
+            <View style={[styles.heroBadge, { backgroundColor: hc.badgeBg }]}>
+              <RNText style={[styles.heroBadgeText, { color: hc.badgeColor }]}>
+                {HERO_BADGE[heroState]}
+              </RNText>
+            </View>
+          </View>
+
+          <View style={styles.heroGrid}>
+            <View style={styles.heroStat}>
+              <RNText style={[styles.heroNum, { color: '#C8EAB0' }]}>{pagadas.length}</RNText>
+              <RNText style={styles.heroStatLabel}>Pagadas</RNText>
+            </View>
+            <View style={styles.heroDivider} />
+            <View style={styles.heroStat}>
+              <RNText style={[styles.heroNum, { color: hc.pendingNum }]}>
+                {pendientes.length + vencidas.length}
+              </RNText>
+              <RNText style={styles.heroStatLabel}>Pendientes</RNText>
+            </View>
+          </View>
+
+          <View style={styles.heroFooter}>
+            {heroState === 'calm' ? (
+              <>
+                <MaterialCommunityIcons name="calendar-outline" size={13} color="rgba(255,255,255,0.5)" />
+                <RNText style={styles.heroFooterCalm}>Sin vencimientos próximos</RNText>
+              </>
+            ) : proximaFactura ? (
+              <>
+                <MaterialCommunityIcons
+                  name={heroState === 'urgent' ? 'lightning-bolt' : 'calendar-outline'}
+                  size={13}
+                  color={hc.badgeColor}
+                />
+                <RNText style={[styles.heroFooterText, { color: hc.badgeColor }]} numberOfLines={1}>
+                  {proximaFactura.nombre}
+                </RNText>
+                <RNText style={[styles.heroFooterDays, { color: hc.badgeColor }]}>
+                  {heroState === 'urgent' ? 'Hoy' : `${daysUntilNextDue}d`}
+                </RNText>
+                {proximaFactura.monto ? (
+                  <RNText style={[styles.heroFooterMonto, { color: hc.badgeColor }]}>
+                    · {formatMonto(proximaFactura.monto)}
+                  </RNText>
+                ) : null}
+              </>
             ) : null}
           </View>
         </View>
 
-        {/* Estado del hogar */}
-        <Card style={styles.estadoCard}>
-          {todasPagadas ? (
-            <View style={styles.estadoRow}>
-              <Text style={styles.estadoEmoji}>🎉</Text>
-              <View>
-                <Text variant="headline">Todo al día</Text>
-                <Text variant="caption" color={colors.textSecondary}>
-                  Todas las facturas del mes pagadas
-                </Text>
-              </View>
-            </View>
-          ) : vencidas.length > 0 ? (
-            <TouchableOpacity
-              style={styles.estadoRow}
-              onPress={() => router.push('/(tabs)/facturas')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.estadoEmoji}>⚠️</Text>
-              <View style={{ flex: 1 }}>
-                <Text variant="headline">
-                  {vencidas.length} {vencidas.length === 1 ? 'factura vencida' : 'facturas vencidas'}
-                </Text>
-                <Text variant="caption" color={colors.danger}>
-                  {vencidas.map((f) => f.nombre).join(', ')}
-                </Text>
-              </View>
-              <Text color={colors.textTertiary}>›</Text>
-            </TouchableOpacity>
-          ) : pendientes.length > 0 ? (
-            <TouchableOpacity
-              style={styles.estadoRow}
-              onPress={() => router.push('/(tabs)/facturas')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.estadoEmoji}>🧾</Text>
-              <View style={{ flex: 1 }}>
-                <Text variant="headline">
-                  {pendientes.length} {pendientes.length === 1 ? 'factura pendiente' : 'facturas pendientes'}
-                </Text>
-                <Text variant="caption" color={colors.textSecondary}>
-                  {pendientes.map((f) => f.nombre).join(', ')}
-                </Text>
-              </View>
-              <Text color={colors.textTertiary}>›</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.estadoRow}>
-              <Text style={styles.estadoEmoji}>🏡</Text>
-              <Text variant="headline">Sin facturas registradas</Text>
-            </View>
-          )}
-
-          <View style={[styles.divisor, { backgroundColor: colors.border }]} />
-
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Text variant="caption" color={colors.textSecondary}>
-                Gastos del mes
-              </Text>
-              <Text variant="title3" style={{ fontWeight: '700' }}>
-                {formatMonto(totalMes)}
-              </Text>
-            </View>
-            <View style={[styles.statDivisor, { backgroundColor: colors.border }]} />
-            <View style={styles.stat}>
-              <Text variant="caption" color={colors.textSecondary}>
-                Facturas pagadas
-              </Text>
-              <Text variant="title3" style={{ fontWeight: '700' }}>
-                {facturas.filter((f) => f.pago_actual?.estado === 'pagada').length} / {facturas.length}
-              </Text>
-            </View>
-          </View>
-        </Card>
-
-        {/* Objetivos */}
-        {objetivosActivos.length > 0 ? (
+        {/* Facturas del mes */}
+        {facturas.length > 0 && (
           <View style={styles.seccion}>
             <View style={styles.seccionHeader}>
-              <Text variant="title3">Objetivos</Text>
-              <TouchableOpacity onPress={() => router.push('/modal/objetivo')}>
-                <Text variant="footnote" color={colors.primary}>
-                  + Nuevo
-                </Text>
+              <RNText style={[styles.seccionTitle, { color: colors.textPrimary }]}>Facturas del mes</RNText>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/facturas')}>
+                <RNText style={[styles.seccionLink, { color: colors.primary }]}>Ver todas</RNText>
               </TouchableOpacity>
             </View>
-            {objetivosActivos.map((obj) => (
-              <ObjetivoCard key={obj.id} objetivo={obj} />
-            ))}
+            <View style={[styles.billList, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
+              {facturas.slice(0, 3).map((f, i) => (
+                <View key={f.id}>
+                  <BillRow factura={f} />
+                  {i < Math.min(facturas.length, 3) - 1 && (
+                    <View style={styles.billSep} />
+                  )}
+                </View>
+              ))}
+            </View>
           </View>
-        ) : null}
+        )}
 
-        {/* Feed de actividad */}
+        {/* Objetivos activos */}
+        {objetivosActivos.length > 0 && (
+          <View style={styles.seccion}>
+            <View style={styles.seccionHeader}>
+              <RNText style={[styles.seccionTitle, { color: colors.textPrimary }]}>Objetivos</RNText>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/objetivos')}>
+                <RNText style={[styles.seccionLink, { color: colors.sage }]}>Ver todos</RNText>
+              </TouchableOpacity>
+            </View>
+            {objetivosActivos.map((obj) => {
+              const pct = Math.min(100, Math.round((obj.monto_actual / obj.monto_objetivo) * 100));
+              return (
+                <View key={obj.id} style={[styles.miniObj, { backgroundColor: colors.cardSage, borderColor: 'rgba(90,122,72,0.2)' }]}>
+                  <View style={styles.miniObjTop}>
+                    <RNText style={[styles.miniObjName, { color: colors.textPrimary }]}>{obj.nombre}</RNText>
+                    <RNText style={[styles.miniObjPct, { color: colors.sage }]}>{pct}%</RNText>
+                  </View>
+                  <View style={[styles.miniObjTrack, { backgroundColor: 'rgba(90,122,72,0.15)' }]}>
+                    <View style={[styles.miniObjFill, { width: `${pct}%` as `${number}%`, backgroundColor: colors.sage }]} />
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Actividad */}
         <View style={styles.seccion}>
-          <Text variant="title3" style={styles.seccionTitulo}>
-            Actividad
-          </Text>
-
+          <RNText style={[styles.seccionTitle, { color: colors.textPrimary }]}>Actividad</RNText>
           {actividad.length === 0 ? (
-            <EmptyState
-              emoji="🌿"
-              titulo="Sin actividad aún"
-              descripcion="Las acciones del hogar aparecerán aquí"
-            />
+            <View style={[styles.actEmpty, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
+              <RNText style={[styles.actEmptyText, { color: colors.textSecondary }]}>
+                Las acciones del hogar aparecerán aquí
+              </RNText>
+            </View>
           ) : (
-            <Card padded={false} style={styles.actividadCard}>
+            <View style={[styles.actCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
               {actividad.map((item, idx) => (
                 <React.Fragment key={item.id}>
                   <ActividadItem item={item} />
                   {idx < actividad.length - 1 && (
-                    <View style={[styles.separador, { backgroundColor: colors.border }]} />
+                    <View style={styles.actSep} />
                   )}
                 </React.Fragment>
               ))}
-            </Card>
+            </View>
           )}
         </View>
       </ScrollView>
@@ -204,72 +282,59 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    padding: Spacing.md,
-    paddingBottom: 120,
-    gap: Spacing.lg,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 8,
-  },
-  avatares: {
-    flexDirection: 'row',
-    gap: -8,
-  },
-  estadoCard: {
-    gap: 0,
-    padding: 0,
-    overflow: 'hidden',
-  },
-  estadoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 16,
-  },
-  estadoEmoji: {
-    fontSize: 28,
-  },
-  divisor: {
-    height: 1,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    padding: 16,
-  },
-  stat: {
-    flex: 1,
-    gap: 4,
-  },
-  statDivisor: {
-    width: 1,
-    marginHorizontal: 16,
-  },
-  seccion: {
-    gap: 12,
-  },
-  seccionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  seccionTitulo: {
-    marginBottom: 0,
-  },
-  actividadCard: {
-    overflow: 'hidden',
-  },
-  separador: {
-    height: 1,
-    marginLeft: 64,
-  },
+  safe: { flex: 1 },
+  scroll: { flex: 1 },
+  content: { padding: 16, paddingBottom: 120, gap: 20 },
+
+  // Header
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8 },
+  labelCaps: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
+  greeting: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, letterSpacing: -0.4, marginTop: 2 },
+  avatares: { flexDirection: 'row', gap: -8 },
+
+  // HeroCard
+  heroCard: { borderRadius: 16, padding: 16, gap: 16 },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  heroHogarName: { fontFamily: 'Manrope_700Bold', fontSize: 11, color: 'rgba(255,255,255,0.75)' },
+  heroBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  heroBadgeText: { fontFamily: 'Manrope_700Bold', fontSize: 9 },
+  heroGrid: { flexDirection: 'row', alignItems: 'center' },
+  heroStat: { flex: 1, alignItems: 'center', gap: 4 },
+  heroDivider: { width: 1, height: 40, marginHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.13)' },
+  heroNum: { fontFamily: 'Manrope_800ExtraBold', fontSize: 34, letterSpacing: -1 },
+  heroStatLabel: { fontFamily: 'Manrope_500Medium', fontSize: 9, color: 'rgba(255,255,255,0.55)' },
+  heroFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 12 },
+  heroFooterCalm: { fontFamily: 'Manrope_500Medium', fontSize: 11, color: 'rgba(255,255,255,0.5)', flex: 1 },
+  heroFooterText: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, flex: 1 },
+  heroFooterDays: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
+  heroFooterMonto: { fontFamily: 'Manrope_600SemiBold', fontSize: 11 },
+
+  // Bill rows
+  billList: { borderRadius: 14, borderWidth: 0.5, overflow: 'hidden' },
+  billRow: { flexDirection: 'row', alignItems: 'center', borderLeftWidth: 2.5, paddingLeft: 10, paddingVertical: 10, paddingRight: 12 },
+  billName: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
+  billDue: { fontFamily: 'Manrope_500Medium', fontSize: 9, marginTop: 1 },
+  billBadge: { borderRadius: 20, paddingHorizontal: 7, paddingVertical: 2 },
+  billBadgeText: { fontFamily: 'Manrope_700Bold', fontSize: 8 },
+  billSep: { height: 0.5, backgroundColor: 'rgba(30,10,16,0.06)', marginLeft: 10 },
+
+  // Sections
+  seccion: { gap: 10 },
+  seccionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  seccionTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 13, letterSpacing: -0.3 },
+  seccionLink: { fontFamily: 'Manrope_600SemiBold', fontSize: 10 },
+
+  // Mini objetivo
+  miniObj: { borderRadius: 14, borderWidth: 0.5, padding: 12, gap: 8 },
+  miniObjTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  miniObjName: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
+  miniObjPct: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
+  miniObjTrack: { height: 5, borderRadius: 3, overflow: 'hidden' },
+  miniObjFill: { height: 5, borderRadius: 3 },
+
+  // Activity
+  actCard: { borderRadius: 14, borderWidth: 0.5, overflow: 'hidden' },
+  actEmpty: { borderRadius: 14, borderWidth: 0.5, padding: 20, alignItems: 'center' },
+  actEmptyText: { fontFamily: 'Manrope_500Medium', fontSize: 11 },
+  actSep: { height: 0.5, backgroundColor: 'rgba(30,10,16,0.06)', marginLeft: 10 },
 });

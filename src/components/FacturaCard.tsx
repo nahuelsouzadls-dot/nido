@@ -1,10 +1,7 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text as RNText } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Radii, Shadow } from '@/constants/theme';
-import { Text } from '@/components/ui/Text';
-import { Badge } from '@/components/ui/Badge';
-import { Avatar } from '@/components/ui/Avatar';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { formatMonto } from '@/utils/format';
 import type { Factura } from '@/types';
@@ -14,13 +11,6 @@ type Props = {
   onPagar: () => void;
   onPress?: () => void;
 };
-
-function getEstadoBadge(factura: Factura) {
-  const estado = factura.pago_actual?.estado;
-  if (estado === 'pagada') return { variant: 'success' as const, label: 'Pagada' };
-  if (estado === 'vencida') return { variant: 'danger' as const, label: 'Vencida' };
-  return { variant: 'warning' as const, label: 'Pendiente' };
-}
 
 function getVencimientoLabel(dia: number): string {
   const hoy = new Date().getDate();
@@ -33,8 +23,8 @@ function getVencimientoLabel(dia: number): string {
 
 export function FacturaCard({ factura, onPagar, onPress }: Props) {
   const colors = useColors();
-  const { variant, label } = getEstadoBadge(factura);
   const esPagada = factura.pago_actual?.estado === 'pagada';
+  const esVencida = factura.pago_actual?.estado === 'vencida';
 
   const handlePagar = () => {
     if (esPagada) return;
@@ -42,45 +32,52 @@ export function FacturaCard({ factura, onPagar, onPress }: Props) {
     onPagar();
   };
 
+  const cardBg = esPagada ? colors.cardSage : colors.card;
+  const cardBorder = esPagada ? 'rgba(90,122,72,0.2)' : colors.borderSubtle;
+
   return (
     <TouchableOpacity
-      style={[
-        styles.card,
-        { backgroundColor: colors.card, borderColor: colors.border },
-        esPagada && styles.cardPagada,
-      ]}
+      style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}
       onPress={onPress}
       activeOpacity={0.85}
     >
       <View style={styles.top}>
-        <View style={styles.info}>
-          <Text variant="headline">{factura.nombre}</Text>
-          <Text variant="caption" color={colors.textSecondary}>
-            {getVencimientoLabel(factura.dia_vencimiento)}
-          </Text>
+        <View style={{ flex: 1, gap: 2 }}>
+          <RNText style={[styles.nombre, { color: colors.textPrimary }]}>{factura.nombre}</RNText>
+          {!esPagada && (
+            <RNText style={[styles.vencimiento, { color: esVencida ? colors.primaryUrgent : colors.textSecondary }]}>
+              {getVencimientoLabel(factura.dia_vencimiento)}
+            </RNText>
+          )}
+          {factura.responsable ? (
+            <RNText style={[styles.responsable, { color: colors.textSecondary }]}>
+              Compartida con {factura.responsable.nombre.split(' ')[0]}
+            </RNText>
+          ) : null}
         </View>
-        <Badge variant={variant} label={label} />
+
+        {/* Badge */}
+        <View style={[
+          styles.badge,
+          { backgroundColor: esPagada ? 'rgba(90,122,72,0.12)' : 'rgba(107,45,62,0.1)' },
+        ]}>
+          <RNText style={[styles.badgeText, { color: esPagada ? colors.sageDark : colors.primary }]}>
+            {esPagada ? 'Pagada' : 'Pendiente'}
+          </RNText>
+        </View>
       </View>
 
       <View style={styles.bottom}>
         <View>
           {factura.monto ? (
-            <Text variant="title2" style={{ fontWeight: '700' }}>
+            <RNText style={[styles.monto, { color: esPagada ? colors.sageDark : colors.textPrimary }]}>
               {formatMonto(factura.monto)}
-            </Text>
+            </RNText>
           ) : (
-            <Text variant="subhead" color={colors.textSecondary}>
+            <RNText style={[styles.montoVariable, { color: colors.textSecondary }]}>
               Monto variable
-            </Text>
+            </RNText>
           )}
-          {factura.responsable ? (
-            <View style={styles.responsable}>
-              <Avatar nombre={factura.responsable.nombre} size={16} />
-              <Text variant="caption" color={colors.textSecondary}>
-                {factura.responsable.nombre.split(' ')[0]}
-              </Text>
-            </View>
-          ) : null}
         </View>
 
         {!esPagada ? (
@@ -89,16 +86,12 @@ export function FacturaCard({ factura, onPagar, onPress }: Props) {
             onPress={handlePagar}
             activeOpacity={0.8}
           >
-            <Text style={styles.botonLabel}>Pagar</Text>
+            <RNText style={styles.botonLabel}>Pagar</RNText>
           </TouchableOpacity>
         ) : (
-          <View style={[styles.pagadoPor, { backgroundColor: colors.successLight }]}>
-            <Text style={[styles.checkmark, { color: colors.success }]}>✓</Text>
-            {factura.pago_actual?.pagador ? (
-              <Text variant="caption" color={colors.success}>
-                {factura.pago_actual.pagador.nombre.split(' ')[0]}
-              </Text>
-            ) : null}
+          <View style={[styles.pagadoChip, { backgroundColor: 'rgba(90,122,72,0.12)' }]}>
+            <MaterialCommunityIcons name="check" size={12} color={colors.sageDark} />
+            <RNText style={[styles.pagadoText, { color: colors.sageDark }]}>Listo</RNText>
           </View>
         )}
       </View>
@@ -108,54 +101,73 @@ export function FacturaCard({ factura, onPagar, onPress }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Radii.lg,
-    borderWidth: 1,
-    padding: 16,
-    gap: 16,
-    ...Shadow.sm,
-  },
-  cardPagada: {
-    opacity: 0.85,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    padding: 14,
+    gap: 12,
   },
   top: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: 8,
   },
-  info: {
-    gap: 2,
+  nombre: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 13,
+  },
+  vencimiento: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 9,
+  },
+  responsable: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 9,
+  },
+  badge: {
+    borderRadius: 20,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    flexShrink: 0,
+  },
+  badgeText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 8,
   },
   bottom: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  responsable: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    marginTop: 4,
+  },
+  monto: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 15,
+    letterSpacing: -0.3,
+  },
+  montoVariable: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 11,
   },
   botonPagar: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: Radii.full,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 13,
   },
   botonLabel: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 12,
     color: '#fff',
-    fontWeight: '600',
-    fontSize: 15,
   },
-  pagadoPor: {
+  pagadoChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: Radii.full,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 13,
   },
-  checkmark: {
-    fontWeight: '700',
-    fontSize: 16,
+  pagadoText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
   },
 });

@@ -1,8 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Radii, Shadow } from '@/constants/theme';
-import { Text } from '@/components/ui/Text';
-import { ProgressBar } from '@/components/ui/ProgressBar';
+import { View, StyleSheet, TouchableOpacity, Text as RNText } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { formatMonto } from '@/utils/format';
 import type { Objetivo } from '@/types';
@@ -16,89 +13,108 @@ export function ObjetivoCard({ objetivo, onPress }: Props) {
   const colors = useColors();
   const progreso = objetivo.monto_actual / objetivo.monto_objetivo;
   const porcentaje = Math.min(Math.round(progreso * 100), 100);
+  const faltan = Math.max(0, objetivo.monto_objetivo - objetivo.monto_actual);
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+      style={[styles.card, { backgroundColor: colors.cardSage, borderColor: 'rgba(90,122,72,0.2)' }]}
       onPress={onPress}
       activeOpacity={0.85}
     >
-      <View style={styles.header}>
-        <Text style={styles.icono}>{objetivo.icono}</Text>
-        <View style={{ flex: 1 }}>
-          <Text variant="headline">{objetivo.nombre}</Text>
-          {objetivo.descripcion ? (
-            <Text variant="caption" color={colors.textSecondary}>
-              {objetivo.descripcion}
-            </Text>
-          ) : null}
-        </View>
-        <Text variant="footnote" color={colors.textSecondary} style={{ fontWeight: '600' }}>
-          {porcentaje}%
-        </Text>
+      {/* Top row */}
+      <View style={styles.topRow}>
+        <RNText style={[styles.nombre, { color: colors.textPrimary }]}>{objetivo.nombre}</RNText>
+        <RNText style={[styles.porcentaje, { color: colors.sage }]}>{porcentaje}%</RNText>
       </View>
 
-      <ProgressBar
-        progress={progreso}
-        color={objetivo.completado ? colors.success : colors.primary}
-      />
-
-      <View style={styles.montos}>
-        <Text variant="footnote" color={colors.textSecondary}>
-          Ahorrado
-        </Text>
-        <View style={styles.cantidades}>
-          <Text variant="callout" style={{ fontWeight: '700' }}>
-            {formatMonto(objetivo.monto_actual)}
-          </Text>
-          <Text variant="footnote" color={colors.textSecondary}>
-            / {formatMonto(objetivo.monto_objetivo)}
-          </Text>
-        </View>
+      {/* Progress bar */}
+      <View style={[styles.track, { backgroundColor: 'rgba(90,122,72,0.15)' }]}>
+        <View style={[styles.fill, { width: `${porcentaje}%` as `${number}%`, backgroundColor: colors.sage }]} />
       </View>
 
-      {objetivo.completado ? (
-        <View style={[styles.completadoBanner, { backgroundColor: colors.successLight }]}>
-          <Text style={[styles.completadoText, { color: colors.success }]}>🎉 ¡Objetivo completado!</Text>
-        </View>
-      ) : null}
+      {/* Bottom row */}
+      <View style={styles.bottomRow}>
+        <RNText style={[styles.montos, { color: colors.textSecondary }]}>
+          {formatMonto(objetivo.monto_actual)} de {formatMonto(objetivo.monto_objetivo)}
+          {!objetivo.completado && faltan > 0 ? ` · faltan ${formatMonto(faltan)}` : ''}
+        </RNText>
+        {!objetivo.completado && (
+          <TouchableOpacity
+            style={[styles.aportarBtn, { backgroundColor: colors.sage }]}
+            onPress={onPress}
+            activeOpacity={0.8}
+          >
+            <RNText style={styles.aportarText}>+ Aportar</RNText>
+          </TouchableOpacity>
+        )}
+        {objetivo.completado && (
+          <View style={[styles.completadoBadge, { backgroundColor: 'rgba(90,122,72,0.15)' }]}>
+            <RNText style={[styles.completadoText, { color: colors.sageDark }]}>Completado</RNText>
+          </View>
+        )}
+      </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Radii.lg,
-    borderWidth: 1,
-    padding: 16,
-    gap: 14,
-    ...Shadow.sm,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    padding: 13,
+    gap: 10,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  icono: {
-    fontSize: 28,
-  },
-  montos: {
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  cantidades: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
+  nombre: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 13,
+    flex: 1,
   },
-  completadoBanner: {
-    borderRadius: Radii.sm,
-    padding: 10,
+  porcentaje: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 13,
+  },
+  track: {
+    height: 5,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: 5,
+    borderRadius: 3,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
+  },
+  montos: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 9,
+    flex: 1,
+  },
+  aportarBtn: {
+    borderRadius: 13,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  aportarText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 10,
+    color: '#fff',
+  },
+  completadoBadge: {
+    borderRadius: 13,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   completadoText: {
-    fontWeight: '600',
-    fontSize: 14,
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 9,
   },
 });

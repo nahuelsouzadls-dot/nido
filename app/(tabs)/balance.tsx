@@ -1,34 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Text as RNText,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Radii, Spacing } from '@/constants/theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
-import { Text } from '@/components/ui/Text';
-import { Card } from '@/components/ui/Card';
-import { Avatar } from '@/components/ui/Avatar';
-import { GastoRow } from '@/components/GastoRow';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { FAB } from '@/components/FAB';
 import { useAuthStore } from '@/store/auth';
 import { useGastos } from '@/hooks/useGastos';
 import { useFacturas } from '@/hooks/useFacturas';
-import { useBalance } from '@/hooks/useBalance';
 import { formatMonto, formatMes } from '@/utils/format';
-
-type Division = '50-50' | '60-40' | '70-30';
-
-const DIVISIONES: { label: string; value: Division; porcentaje: number }[] = [
-  { label: '50/50', value: '50-50', porcentaje: 50 },
-  { label: '60/40', value: '60-40', porcentaje: 60 },
-  { label: '70/30', value: '70-30', porcentaje: 70 },
-];
 
 export default function BalanceScreen() {
   const { perfil, companero } = useAuthStore();
@@ -38,29 +23,10 @@ export default function BalanceScreen() {
   const anio = hoy.getFullYear();
 
   const { gastos, loading: loadingGastos, recargar: recargarGastos } = useGastos(mes, anio);
-  const { facturas, loading: loadingFacturas, recargar: recargarFacturas } = useFacturas(mes, anio);
+  const { facturas, loading: loadingFacturas, recargar: recargarFacturas, pendientes } = useFacturas(mes, anio);
   const loading = loadingGastos || loadingFacturas;
 
-  const [division, setDivision] = useState<Division>('50-50');
   const [refreshing, setRefreshing] = useState(false);
-
-  // Extrae solo los pagos de facturas pagadas para el cálculo de balance.
-  // Incluirlos corrige el cálculo: si alguien pagó una factura de su bolsillo,
-  // eso debe contarse en su contribución del mes.
-  const facturasPagadas = useMemo(
-    () => facturas
-      .filter((f) => f.pago_actual?.estado === 'pagada' && f.pago_actual?.pagado_por != null)
-      .map((f) => f.pago_actual!),
-    [facturas],
-  );
-
-  const porcentajeA = DIVISIONES.find((d) => d.value === division)?.porcentaje ?? 50;
-
-  const balanceConfig = useMemo(
-    () => ({ tipo: 'porcentaje' as const, porcentajeA }),
-    [porcentajeA],
-  );
-  const balance = useBalance(gastos, facturasPagadas, balanceConfig);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -78,31 +44,42 @@ export default function BalanceScreen() {
     );
   }
 
-  if (!perfil) return null;
-
-  // Sin compañero: mostrar estado vacío en lugar de pantalla en blanco
+  // Sin compañero
   if (!companero) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={styles.header}>
-          <Text variant="largeTitle" style={{ fontWeight: '800' }}>Balance</Text>
-          <Text variant="subhead" color={colors.textSecondary}>{formatMes(mes, anio)}</Text>
+          <RNText style={[styles.labelCaps, { color: colors.textSecondary }]}>
+            {formatMes(mes, anio).toUpperCase()}
+          </RNText>
+          <RNText style={[styles.title, { color: colors.textPrimary }]}>Balance</RNText>
         </View>
-        <EmptyState
-          emoji="👥"
-          titulo="Esperando al compañero"
-          descripcion="Invitá a tu pareja a unirse al hogar para ver el balance"
-        />
+        <View style={styles.emptyContainer}>
+          <View style={[styles.emptyIcon, { backgroundColor: 'rgba(107,45,62,0.08)' }]}>
+            <MaterialCommunityIcons name="account-plus-outline" size={26} color={colors.primary} />
+          </View>
+          <RNText style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+            Esperando a tu compañero/a
+          </RNText>
+          <RNText style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+            Invitá a alguien a unirse al hogar para ver el balance compartido
+          </RNText>
+        </View>
       </SafeAreaView>
     );
   }
 
-  if (!balance) return null;
+  // Compute total
+  const totalGastos = gastos.reduce((sum, g) => sum + g.monto, 0);
+  const facturasPagadasMonto = facturas
+    .filter((f) => f.pago_actual?.estado === 'pagada' && f.pago_actual?.monto)
+    .reduce((sum, f) => sum + (f.pago_actual?.monto ?? 0), 0);
+  const totalMes = totalGastos + facturasPagadasMonto;
 
-  const deudorNombre =
-    balance.deudor === perfil.id ? perfil.nombre : companero.nombre;
-  const acreedorNombre =
-    balance.acreedor === perfil.id ? perfil.nombre : companero.nombre;
+  // Simple progress — ratio of paid vs total invoices
+  const totalFacturas = facturas.length;
+  const pagadasCount = facturas.filter((f) => f.pago_actual?.estado === 'pagada').length;
+  const pctPagadas = totalFacturas > 0 ? pagadasCount / totalFacturas : 0;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
@@ -114,155 +91,118 @@ export default function BalanceScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text variant="largeTitle" style={{ fontWeight: '800' }}>
-            Balance
-          </Text>
-          <Text variant="subhead" color={colors.textSecondary}>
-            {formatMes(mes, anio)}
-          </Text>
+          <RNText style={[styles.labelCaps, { color: colors.textSecondary }]}>
+            {formatMes(mes, anio).toUpperCase()}
+          </RNText>
+          <RNText style={[styles.title, { color: colors.textPrimary }]}>Balance</RNText>
         </View>
 
-        {/* División */}
-        <View style={styles.divisionWrapper}>
-          <Text variant="footnote" color={colors.textSecondary} style={{ marginBottom: 8 }}>
-            Método de división
-          </Text>
-          <View style={styles.divisionRow}>
-            {DIVISIONES.map((d) => (
-              <TouchableOpacity
-                key={d.value}
-                style={[
-                  styles.divisionBtn,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                  division === d.value && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-                ]}
-                onPress={() => setDivision(d.value)}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={{
-                    fontWeight: '600',
-                    fontSize: 14,
-                    color: division === d.value ? colors.primary : colors.textSecondary,
-                  }}
-                >
-                  {d.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Resumen */}
-        <Card style={styles.resumen}>
-          <Text variant="caption" color={colors.textSecondary} align="center">
-            Total del mes
-          </Text>
-          <Text variant="largeTitle" style={{ fontWeight: '800', textAlign: 'center' }}>
-            {formatMonto(balance.totalMes)}
-          </Text>
-
-          <View style={styles.barraBalance}>
-            <View
-              style={[
-                styles.barraA,
-                {
-                  flex: balance.montoA || 0.01,
-                  backgroundColor: colors.primary,
-                },
-              ]}
-            />
-            <View
-              style={[
-                styles.barraB,
-                {
-                  flex: balance.montoB || 0.01,
-                  backgroundColor: '#FF9F0A',
-                },
-              ]}
-            />
-          </View>
-
-          <View style={styles.personasRow}>
-            <View style={styles.persona}>
-              <Avatar nombre={perfil.nombre} url={perfil.avatar_url} size={40} color={colors.primary} />
-              <Text variant="subhead" style={{ fontWeight: '600' }}>
-                {perfil.nombre.split(' ')[0]}
-              </Text>
-              <Text variant="title3" style={{ fontWeight: '700', color: colors.primary }}>
-                {formatMonto(balance.montoA)}
-              </Text>
-              <Text variant="caption" color={colors.textSecondary}>
-                {balance.porcentajeA}% esperado
-              </Text>
+        {/* BalanceHeroCard */}
+        <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
+          <RNText style={[styles.heroLabel, { color: colors.textSecondary }]}>
+            EL HOGAR GASTÓ ESTE MES
+          </RNText>
+          <RNText style={[styles.heroTotal, { color: colors.textPrimary }]}>
+            {formatMonto(totalMes)}
+          </RNText>
+          {totalFacturas > 0 && pctPagadas === 1 && (
+            <View style={[styles.heroBadge, { backgroundColor: colors.sageLight }]}>
+              <MaterialCommunityIcons name="check" size={12} color={colors.sage} />
+              <RNText style={[styles.heroBadgeText, { color: colors.sageDark }]}>
+                Dentro del presupuesto
+              </RNText>
             </View>
-
-            <View style={styles.vsContainer}>
-              <Text variant="callout" color={colors.textTertiary} style={{ fontWeight: '700' }}>
-                vs
-              </Text>
-            </View>
-
-            <View style={styles.persona}>
-              <Avatar nombre={companero.nombre} url={companero.avatar_url} size={40} color="#FF9F0A" />
-              <Text variant="subhead" style={{ fontWeight: '600' }}>
-                {companero.nombre.split(' ')[0]}
-              </Text>
-              <Text variant="title3" style={{ fontWeight: '700', color: '#FF9F0A' }}>
-                {formatMonto(balance.montoB)}
-              </Text>
-              <Text variant="caption" color={colors.textSecondary}>
-                {balance.porcentajeB}% esperado
-              </Text>
-            </View>
-          </View>
-        </Card>
-
-        {/* Estado */}
-        {balance.montoDebe > 0.5 ? (
-          <Card style={styles.deudaCard}>
-            <Text variant="footnote" color={colors.textSecondary}>
-              Ajuste
-            </Text>
-            <Text variant="headline" style={{ marginTop: 4 }}>
-              {deudorNombre.split(' ')[0]} le debe a {acreedorNombre.split(' ')[0]}
-            </Text>
-            <Text variant="title1" style={{ fontWeight: '800', color: colors.danger, marginTop: 4 }}>
-              {formatMonto(balance.montoDebe)}
-            </Text>
-          </Card>
-        ) : (
-          <Card style={[styles.deudaCard, { backgroundColor: colors.successLight, borderColor: colors.success + '40' }]}>
-            <Text variant="headline" style={{ color: colors.success }}>
-              ✓ Están al día
-            </Text>
-            <Text variant="subhead" color={colors.textSecondary} style={{ marginTop: 4 }}>
-              La división está equilibrada
-            </Text>
-          </Card>
-        )}
-
-        {/* Lista de gastos */}
-        <View style={styles.gastosSection}>
-          <Text variant="title3">Gastos del mes</Text>
-
-          {gastos.length === 0 ? (
-            <EmptyState
-              emoji="💸"
-              titulo="Sin gastos este mes"
-              descripcion="Registrá gastos con el botón +"
-            />
-          ) : (
-            <Card padded={false} style={{ overflow: 'hidden' }}>
-              {gastos.map((g) => (
-                <GastoRow key={g.id} gasto={g} />
-              ))}
-            </Card>
           )}
         </View>
-      </ScrollView>
 
-      <FAB />
+        {/* Monthly progress */}
+        {totalFacturas > 0 && (
+          <View style={styles.progressSection}>
+            <View style={styles.progressRow}>
+              <RNText style={[styles.progressLabel, { color: colors.textSecondary }]}>
+                Facturas pagadas
+              </RNText>
+              <RNText style={[styles.progressCount, { color: colors.textPrimary }]}>
+                {pagadasCount} de {totalFacturas}
+              </RNText>
+            </View>
+            <View style={[styles.progressTrack, { backgroundColor: colors.borderSubtle }]}>
+              <View style={[
+                styles.progressFill,
+                { width: `${pctPagadas * 100}%` as `${number}%`, backgroundColor: colors.primary },
+              ]} />
+            </View>
+          </View>
+        )}
+
+        {/* Pendientes box */}
+        {pendientes.length > 0 && (
+          <View style={[styles.pendientesBox, { backgroundColor: 'rgba(107,45,62,0.06)', borderColor: 'rgba(107,45,62,0.11)' }]}>
+            <View style={styles.pendientesHeader}>
+              <RNText style={[styles.pendientesTitle, { color: colors.textPrimary }]}>
+                Pendiente de pago
+              </RNText>
+              <RNText style={[styles.pendientesCount, { color: colors.primary }]}>
+                {pendientes.length} {pendientes.length === 1 ? 'factura' : 'facturas'} este mes
+              </RNText>
+            </View>
+            {pendientes.map((f, i) => (
+              <View key={f.id}>
+                {i > 0 && <View style={[styles.pendienteSep, { backgroundColor: 'rgba(107,45,62,0.08)' }]} />}
+                <View style={styles.pendienteRow}>
+                  <RNText style={[styles.pendienteName, { color: colors.textPrimary }]}>{f.nombre}</RNText>
+                  <RNText style={[styles.pendienteMonto, { color: colors.primary }]}>
+                    {f.monto ? formatMonto(f.monto) : 'Variable'}
+                  </RNText>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Gastos list */}
+        {gastos.length > 0 && (
+          <View style={styles.gastosSection}>
+            <RNText style={[styles.gastosTitle, { color: colors.textPrimary }]}>Gastos del mes</RNText>
+            <View style={[styles.gastosList, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
+              {gastos.map((g, i) => (
+                <View key={g.id}>
+                  {i > 0 && <View style={[styles.gastoSep, { backgroundColor: 'rgba(30,10,16,0.06)' }]} />}
+                  <View style={styles.gastoRow}>
+                    <View style={{ flex: 1 }}>
+                      <RNText style={[styles.gastoDesc, { color: colors.textPrimary }]}>
+                        {g.descripcion}
+                      </RNText>
+                      {g.categoria?.nombre && (
+                        <RNText style={[styles.gastoCat, { color: colors.textSecondary }]}>
+                          {g.categoria.nombre}
+                        </RNText>
+                      )}
+                    </View>
+                    <RNText style={[styles.gastoMonto, { color: colors.textPrimary }]}>
+                      {formatMonto(g.monto)}
+                    </RNText>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {gastos.length === 0 && pendientes.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <View style={[styles.emptyIcon, { backgroundColor: 'rgba(107,45,62,0.08)' }]}>
+              <MaterialCommunityIcons name="scale-balance" size={26} color={colors.primary} />
+            </View>
+            <RNText style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+              Todavía no hay datos
+            </RNText>
+            <RNText style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+              Registrá gastos y facturas para ver el balance del hogar
+            </RNText>
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -270,33 +210,49 @@ export default function BalanceScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { flex: 1 },
-  content: { padding: Spacing.md, gap: Spacing.md, paddingBottom: 120 },
+  content: { padding: 16, gap: 16, paddingBottom: 100 },
   header: { paddingTop: 8, gap: 2 },
-  divisionWrapper: { gap: 0 },
-  divisionRow: { flexDirection: 'row', gap: 8 },
-  divisionBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: Radii.full,
-    borderWidth: 1,
-  },
-  resumen: { gap: 16 },
-  barraBalance: {
-    flexDirection: 'row',
-    height: 10,
-    borderRadius: 5,
-    overflow: 'hidden',
-    gap: 2,
-  },
-  barraA: { borderRadius: 5 },
-  barraB: { borderRadius: 5 },
-  personasRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  persona: { alignItems: 'center', gap: 6, flex: 1 },
-  vsContainer: { paddingHorizontal: 8 },
-  deudaCard: { gap: 2 },
-  gastosSection: { gap: 12 },
+  labelCaps: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
+  title: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, letterSpacing: -0.4 },
+
+  // Hero card
+  heroCard: { borderRadius: 14, borderWidth: 0.5, padding: 20, alignItems: 'center', gap: 10 },
+  heroLabel: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
+  heroTotal: { fontFamily: 'Manrope_800ExtraBold', fontSize: 22, letterSpacing: -0.8 },
+  heroBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  heroBadgeText: { fontFamily: 'Manrope_700Bold', fontSize: 9 },
+
+  // Progress
+  progressSection: { gap: 8 },
+  progressRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  progressLabel: { fontFamily: 'Manrope_500Medium', fontSize: 10 },
+  progressCount: { fontFamily: 'Manrope_700Bold', fontSize: 10 },
+  progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: 6, borderRadius: 3 },
+
+  // Pendientes box
+  pendientesBox: { borderRadius: 11, borderWidth: 0.5, padding: 11, gap: 8 },
+  pendientesHeader: { gap: 2 },
+  pendientesTitle: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
+  pendientesCount: { fontFamily: 'Manrope_500Medium', fontSize: 10 },
+  pendienteSep: { height: 0.5 },
+  pendienteRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  pendienteName: { fontFamily: 'Manrope_600SemiBold', fontSize: 11 },
+  pendienteMonto: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
+
+  // Gastos
+  gastosSection: { gap: 10 },
+  gastosTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 13, letterSpacing: -0.3 },
+  gastosList: { borderRadius: 14, borderWidth: 0.5, overflow: 'hidden' },
+  gastoRow: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
+  gastoDesc: { fontFamily: 'Manrope_600SemiBold', fontSize: 11 },
+  gastoCat: { fontFamily: 'Manrope_500Medium', fontSize: 9, marginTop: 1 },
+  gastoMonto: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
+  gastoSep: { height: 0.5, marginLeft: 12 },
+
+  // Empty
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12 },
+  emptyIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 15, textAlign: 'center' },
+  emptySubtext: { fontFamily: 'Manrope_500Medium', fontSize: 11, textAlign: 'center', lineHeight: 16, paddingHorizontal: 24 },
 });

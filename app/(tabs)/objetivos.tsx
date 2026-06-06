@@ -1,0 +1,214 @@
+import React, { useState } from 'react';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  RefreshControl,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useColors } from '@/hooks/useColors';
+import { Text } from '@/components/ui/Text';
+import { ObjetivoCard } from '@/components/ObjetivoCard';
+import { useObjetivos } from '@/hooks/useObjetivos';
+import { formatMes } from '@/utils/format';
+
+export default function ObjetivosScreen() {
+  const router = useRouter();
+  const colors = useColors();
+  const hoy = new Date();
+  const { objetivos, recargar } = useObjetivos();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const activos = objetivos.filter((o) => !o.completado);
+  const completados = objetivos.filter((o) => o.completado);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    await recargar();
+    setRefreshing(false);
+  };
+
+  return (
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={[styles.labelCaps, { color: colors.textSecondary }]}>
+            {formatMes(hoy.getMonth() + 1, hoy.getFullYear()).toUpperCase()}
+          </Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Objetivos</Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.addBtn, { backgroundColor: colors.sage }]}
+          onPress={() => router.push('/modal/objetivo')}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="plus" size={18} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.sage} />}
+      >
+        {objetivos.length === 0 ? (
+          /* Empty state */
+          <View style={styles.emptyContainer}>
+            <View style={[styles.emptyIcon, { backgroundColor: colors.sageLight }]}>
+              <MaterialCommunityIcons name="target" size={26} color={colors.sage} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+              ¿Qué están construyendo?
+            </Text>
+            <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+              Creá un objetivo compartido y vean cómo avanzan juntos.
+            </Text>
+            <TouchableOpacity
+              style={[styles.emptyBtn, { backgroundColor: colors.sage }]}
+              onPress={() => router.push('/modal/objetivo')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.emptyBtnText}>Crear primer objetivo</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            {activos.map((obj) => (
+              <ObjetivoCard
+                key={obj.id}
+                objetivo={obj}
+                onPress={() => router.push('/modal/objetivo')}
+              />
+            ))}
+
+            {/* Add card */}
+            <TouchableOpacity
+              style={[styles.addCard, { borderColor: 'rgba(90,122,72,0.3)' }]}
+              onPress={() => router.push('/modal/objetivo')}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="plus" size={20} color={colors.sage} />
+              <View>
+                <Text style={[styles.addCardTitle, { color: colors.sage }]}>Nuevo objetivo</Text>
+                <Text style={[styles.addCardSubtext, { color: colors.textSecondary }]}>
+                  ¿Qué están ahorrando juntos?
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {completados.length > 0 && (
+              <View style={styles.seccion}>
+                <Text style={[styles.seccionLabel, { color: colors.textSecondary }]}>
+                  COMPLETADOS
+                </Text>
+                {completados.map((obj) => (
+                  <ObjetivoCard key={obj.id} objetivo={obj} />
+                ))}
+              </View>
+            )}
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  labelCaps: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 8,
+    letterSpacing: 0.8,
+  },
+  title: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 20,
+    letterSpacing: -0.4,
+  },
+  addBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scroll: { flex: 1 },
+  content: { padding: 16, gap: 12, paddingBottom: 100 },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 12,
+  },
+  emptyIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+    paddingHorizontal: 24,
+  },
+  emptyBtn: {
+    borderRadius: 13,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    marginTop: 8,
+  },
+  emptyBtnText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 12,
+    color: '#fff',
+  },
+  addCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    backgroundColor: 'rgba(90,122,72,0.06)',
+    padding: 14,
+  },
+  addCardTitle: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 13,
+  },
+  addCardSubtext: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 10,
+    marginTop: 1,
+  },
+  seccion: { gap: 8 },
+  seccionLabel: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 8,
+    letterSpacing: 0.8,
+    marginTop: 8,
+  },
+});

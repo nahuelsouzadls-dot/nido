@@ -7,25 +7,25 @@ import {
   Platform,
   Alert,
   TouchableOpacity,
+  Text as RNText,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Radii, Spacing } from '@/constants/theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
-import { Text } from '@/components/ui/Text';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuthStore } from '@/store/auth';
 import { useFacturas } from '@/hooks/useFacturas';
 
-const FACTURAS_COMUNES = [
-  { nombre: 'UTE', icono: '💡' },
-  { nombre: 'OSE', icono: '💧' },
-  { nombre: 'Internet', icono: '📡' },
-  { nombre: 'Alquiler', icono: '🏠' },
-  { nombre: 'Gastos comunes', icono: '🏢' },
-  { nombre: 'Netflix', icono: '🎬' },
-  { nombre: 'Spotify', icono: '🎵' },
+type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
+
+const CATEGORIAS: { nombre: string; icon: IconName }[] = [
+  { nombre: 'Servicios', icon: 'lightning-bolt' },
+  { nombre: 'Internet', icon: 'wifi' },
+  { nombre: 'Alquiler', icon: 'home-city-outline' },
+  { nombre: 'Impuestos', icon: 'office-building-outline' },
+  { nombre: 'Suscripciones', icon: 'television-play' },
+  { nombre: 'Otro', icon: 'dots-horizontal' },
 ];
 
 export default function ModalFactura() {
@@ -40,19 +40,20 @@ export default function ModalFactura() {
   const [diaVencimiento, setDiaVencimiento] = useState('');
   const [responsableId, setResponsableId] = useState(perfil?.id ?? '');
   const [loading, setLoading] = useState(false);
+  const [nombreFocused, setNombreFocused] = useState(false);
+  const [montoFocused, setMontoFocused] = useState(false);
+  const [diaFocused, setDiaFocused] = useState(false);
 
   const handleGuardar = async () => {
     if (!nombre.trim() || !diaVencimiento) {
       Alert.alert('Campos requeridos', 'Completá el nombre y el día de vencimiento');
       return;
     }
-
     const dia = parseInt(diaVencimiento);
     if (isNaN(dia) || dia < 1 || dia > 31) {
       Alert.alert('Día inválido', 'El día debe ser entre 1 y 31');
       return;
     }
-
     setLoading(true);
     try {
       await crear({
@@ -72,145 +73,182 @@ export default function ModalFactura() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Top bar */}
+      <View style={[styles.topBar, { backgroundColor: colors.background, borderBottomColor: colors.borderSubtle }]}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <MaterialCommunityIcons name="close" size={22} color={colors.textSecondary} />
+        </TouchableOpacity>
+        <RNText style={[styles.topTitle, { color: colors.textPrimary }]}>Nueva factura</RNText>
+        <TouchableOpacity onPress={handleGuardar} disabled={loading}>
+          <RNText style={[styles.topSave, { color: loading ? colors.textSecondary : colors.primary }]}>
+            Guardar
+          </RNText>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         style={[styles.scroll, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Sugerencias rápidas */}
-        <View style={styles.seccion}>
-          <Text variant="footnote" color={colors.textSecondary}>
-            Sugerencias
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.sugerencias}>
-              {FACTURAS_COMUNES.map((f) => (
-                <TouchableOpacity
-                  key={f.nombre}
-                  style={[
-                    styles.sugerencia,
-                    { backgroundColor: colors.card, borderColor: colors.border },
-                    nombre === f.nombre && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-                  ]}
-                  onPress={() => setNombre(f.nombre)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={{ fontSize: 18 }}>{f.icono}</Text>
-                  <Text
-                    variant="caption"
-                    style={{
-                      fontWeight: '600',
-                      color: nombre === f.nombre ? colors.primary : colors.textSecondary,
-                    }}
-                  >
-                    {f.nombre}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
+        {/* Monto field */}
+        <View style={[styles.montoCard, { backgroundColor: 'rgba(255,255,255,0.55)', borderColor: 'rgba(107,45,62,0.2)' }]}>
+          <RNText style={[styles.montoSign, { color: colors.textSecondary }]}>$</RNText>
+          <TextInput
+            style={[styles.montoInput, { color: colors.textPrimary }]}
+            placeholder="0"
+            placeholderTextColor={colors.textSecondary}
+            value={monto}
+            onChangeText={setMonto}
+            keyboardType="numeric"
+            returnKeyType="next"
+          />
+          <RNText style={[styles.montoHint, { color: colors.textSecondary }]}>opcional</RNText>
         </View>
 
-        <Input
-          label="Nombre de la factura"
-          value={nombre}
-          onChangeText={setNombre}
-          placeholder="Ej: UTE, Internet, Alquiler..."
-          returnKeyType="next"
-        />
+        {/* Campos */}
+        <View style={[styles.fieldsCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
+          <View style={styles.fieldRow}>
+            <RNText style={[styles.fieldLabel, { color: colors.textSecondary }]}>Nombre</RNText>
+            <TextInput
+              style={[styles.fieldInput, {
+                backgroundColor: nombreFocused ? 'rgba(255,255,255,0.85)' : 'transparent',
+                borderColor: nombreFocused ? colors.primary : 'transparent',
+                color: colors.textPrimary,
+              }]}
+              placeholder="Ej: UTE, Alquiler, Internet..."
+              placeholderTextColor={colors.textSecondary}
+              value={nombre}
+              onChangeText={setNombre}
+              returnKeyType="next"
+              autoFocus
+              onFocus={() => setNombreFocused(true)}
+              onBlur={() => setNombreFocused(false)}
+            />
+          </View>
+          <View style={[styles.fieldSep, { backgroundColor: colors.borderSubtle }]} />
+          <View style={styles.fieldRow}>
+            <RNText style={[styles.fieldLabel, { color: colors.textSecondary }]}>Vence el día</RNText>
+            <TextInput
+              style={[styles.fieldInput, {
+                backgroundColor: diaFocused ? 'rgba(255,255,255,0.85)' : 'transparent',
+                borderColor: diaFocused ? colors.primary : 'transparent',
+                color: colors.textPrimary,
+              }]}
+              placeholder="Ej: 15"
+              placeholderTextColor={colors.textSecondary}
+              value={diaVencimiento}
+              onChangeText={setDiaVencimiento}
+              keyboardType="numeric"
+              returnKeyType="done"
+              onFocus={() => setDiaFocused(true)}
+              onBlur={() => setDiaFocused(false)}
+            />
+          </View>
+        </View>
 
-        <Input
-          label="Monto estimado (opcional)"
-          value={monto}
-          onChangeText={setMonto}
-          placeholder="Si es variable, dejalo vacío"
-          keyboardType="numeric"
-          prefix="$"
-          returnKeyType="next"
-        />
-
-        <Input
-          label="Día de vencimiento"
-          value={diaVencimiento}
-          onChangeText={setDiaVencimiento}
-          placeholder="Ej: 15"
-          keyboardType="numeric"
-          returnKeyType="done"
-          suffix="de cada mes"
-        />
+        {/* Categorías */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.chips}>
+            {CATEGORIAS.map((cat) => {
+              const selected = nombre === cat.nombre;
+              return (
+                <TouchableOpacity
+                  key={cat.nombre}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: selected ? 'rgba(107,45,62,0.1)' : 'rgba(255,255,255,0.55)',
+                      borderColor: selected ? colors.primary : 'rgba(107,45,62,0.14)',
+                    },
+                  ]}
+                  onPress={() => setNombre(cat.nombre)}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons name={cat.icon} size={14} color={selected ? colors.primary : colors.textSecondary} />
+                  <RNText style={[styles.chipText, { color: selected ? colors.primary : colors.textSecondary }]}>
+                    {cat.nombre}
+                  </RNText>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
 
         {/* Responsable */}
         <View style={styles.seccion}>
-          <Text variant="footnote" color={colors.textSecondary}>
-            Responsable de pago
-          </Text>
+          <RNText style={[styles.seccionLabel, { color: colors.textSecondary }]}>Responsable</RNText>
           <View style={styles.pagadoresRow}>
-            {[{ id: '', nombre: 'Cualquiera', avatar_url: null }, perfil, companero]
+            {[{ id: '', nombre: 'Cualquiera', avatar_url: null as string | null }, perfil, companero]
               .filter(Boolean)
               .map((p) => p && (
                 <TouchableOpacity
                   key={p.id || 'any'}
                   style={[
                     styles.pagador,
-                    { backgroundColor: colors.card, borderColor: colors.border },
-                    responsableId === p.id && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+                    {
+                      backgroundColor: responsableId === p.id ? 'rgba(107,45,62,0.1)' : colors.card,
+                      borderColor: responsableId === p.id ? colors.primary : colors.borderSubtle,
+                    },
                   ]}
                   onPress={() => setResponsableId(p.id)}
                   activeOpacity={0.8}
                 >
                   {p.id ? (
-                    <Avatar nombre={p.nombre} url={p.avatar_url} size={30} />
+                    <Avatar nombre={p.nombre} url={p.avatar_url} size={28} color={colors.primaryLight} />
                   ) : (
-                    <Text style={{ fontSize: 20 }}>👥</Text>
+                    <View style={[styles.anyIcon, { backgroundColor: colors.borderSubtle }]}>
+                      <MaterialCommunityIcons name="account-multiple-outline" size={16} color={colors.textSecondary} />
+                    </View>
                   )}
-                  <Text
-                    variant="caption"
-                    style={{
-                      fontWeight: '600',
-                      color: responsableId === p.id ? colors.primary : colors.textSecondary,
-                    }}
-                  >
+                  <RNText style={[styles.pagadorNombre, {
+                    color: responsableId === p.id ? colors.primary : colors.textSecondary,
+                  }]}>
                     {p.nombre.split(' ')[0]}
-                  </Text>
+                  </RNText>
                 </TouchableOpacity>
               ))}
           </View>
         </View>
 
-        <Button
-          label="Crear factura"
+        {/* Save button */}
+        <TouchableOpacity
+          style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: loading ? 0.6 : 1 }]}
           onPress={handleGuardar}
-          loading={loading}
-          size="lg"
-          icon="🧾"
-          style={{ marginTop: 8 }}
-        />
+          disabled={loading}
+          activeOpacity={0.8}
+        >
+          <RNText style={styles.saveBtnText}>{loading ? 'Guardando...' : 'Crear factura'}</RNText>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 0.5 },
+  topTitle: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
+  topSave: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
   scroll: { flex: 1 },
-  content: { padding: Spacing.md, gap: 20, paddingBottom: 60 },
+  content: { padding: 16, gap: 14, paddingBottom: 60 },
+  montoCard: { borderRadius: 14, borderWidth: 0.5, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  montoSign: { fontFamily: 'Manrope_700Bold', fontSize: 20 },
+  montoInput: { fontFamily: 'Manrope_800ExtraBold', fontSize: 34, letterSpacing: -1, textAlign: 'center', minWidth: 80 },
+  montoHint: { fontFamily: 'Manrope_500Medium', fontSize: 9, alignSelf: 'flex-end', marginBottom: 6 },
+  fieldsCard: { borderRadius: 14, borderWidth: 0.5, overflow: 'hidden' },
+  fieldRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 4 },
+  fieldLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, width: 100 },
+  fieldInput: { flex: 1, fontFamily: 'Manrope_600SemiBold', fontSize: 11, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8, borderWidth: 0.5 },
+  fieldSep: { height: 0.5, marginHorizontal: 14 },
+  chips: { flexDirection: 'row', gap: 8, paddingBottom: 2 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 0.5 },
+  chipText: { fontFamily: 'Manrope_600SemiBold', fontSize: 10 },
   seccion: { gap: 8 },
-  sugerencias: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
-  sugerencia: {
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: Radii.lg,
-    borderWidth: 1.5,
-    minWidth: 72,
-  },
+  seccionLabel: { fontFamily: 'Manrope_700Bold', fontSize: 9, letterSpacing: 0.5 },
   pagadoresRow: { flexDirection: 'row', gap: 10 },
-  pagador: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 6,
-    padding: 12,
-    borderRadius: Radii.lg,
-    borderWidth: 1.5,
-  },
+  pagador: { flex: 1, alignItems: 'center', gap: 6, padding: 12, borderRadius: 14, borderWidth: 0.5 },
+  anyIcon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  pagadorNombre: { fontFamily: 'Manrope_600SemiBold', fontSize: 10 },
+  saveBtn: { borderRadius: 13, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  saveBtnText: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: '#fff' },
 });

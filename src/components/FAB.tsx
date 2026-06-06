@@ -6,23 +6,24 @@ import {
   Animated,
   Modal,
   Pressable,
+  Text as RNText,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Radii, Shadow } from '@/constants/theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Shadow } from '@/constants/theme';
 import { useColors } from '@/hooks/useColors';
-import { Text } from '@/components/ui/Text';
 import { useRouter, type Href } from 'expo-router';
 
 type Accion = {
-  icono: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
   label: string;
   ruta: Href;
 };
 
 const ACCIONES: Accion[] = [
-  { icono: '💰', label: 'Registrar gasto', ruta: '/modal/gasto' },
-  { icono: '🧾', label: 'Crear factura', ruta: '/modal/factura' },
-  { icono: '🎯', label: 'Crear objetivo', ruta: '/modal/objetivo' },
+  { icon: 'cash-multiple',        label: 'Registrar gasto', ruta: '/modal/gasto' },
+  { icon: 'file-document-outline',label: 'Crear factura',   ruta: '/modal/factura' },
+  { icon: 'target',               label: 'Crear objetivo',  ruta: '/modal/objetivo' },
 ];
 
 export function FAB() {
@@ -60,12 +61,7 @@ export function FAB() {
       {abierto ? (
         <Modal transparent animationType="none" onRequestClose={cerrar}>
           <Pressable style={styles.overlay} onPress={cerrar}>
-            <Animated.View
-              style={[
-                styles.menu,
-                { backgroundColor: colors.card, opacity: opacidad },
-              ]}
-            >
+            <Animated.View style={[styles.menu, { backgroundColor: colors.card, opacity: opacidad }]}>
               {ACCIONES.map((accion) => (
                 <TouchableOpacity
                   key={accion.label}
@@ -73,10 +69,12 @@ export function FAB() {
                   onPress={() => elegir(accion.ruta)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.accionIcono}>{accion.icono}</Text>
-                  <Text variant="callout" style={{ fontWeight: '500' }}>
+                  <View style={[styles.accionIconBox, { backgroundColor: 'rgba(107,45,62,0.08)' }]}>
+                    <MaterialCommunityIcons name={accion.icon} size={18} color={colors.primary} />
+                  </View>
+                  <RNText style={[styles.accionLabel, { color: colors.textPrimary }]}>
                     {accion.label}
-                  </Text>
+                  </RNText>
                 </TouchableOpacity>
               ))}
             </Animated.View>
@@ -89,9 +87,9 @@ export function FAB() {
         onPress={abierto ? cerrar : abrir}
         activeOpacity={0.9}
       >
-        <Animated.Text style={[styles.fabIcon, { transform: [{ rotate: rotar }] }]}>
-          +
-        </Animated.Text>
+        <Animated.View style={{ transform: [{ rotate: rotar }] }}>
+          <MaterialCommunityIcons name="plus" size={24} color="#fff" />
+        </Animated.View>
       </TouchableOpacity>
     </>
   );
@@ -102,42 +100,46 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 24,
     right: 24,
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
     ...Shadow.lg,
-  },
-  fabIcon: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: '300',
-    lineHeight: 32,
   },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'flex-end',
-    paddingBottom: 100,
+    paddingBottom: 96,
     paddingRight: 24,
     alignItems: 'flex-end',
   },
   menu: {
-    borderRadius: Radii.xl,
-    padding: 8,
+    borderRadius: 20,
+    padding: 6,
     gap: 2,
     ...Shadow.lg,
     minWidth: 220,
+    borderWidth: 0.5,
+    borderColor: 'rgba(107,45,62,0.15)',
   },
   accion: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 14,
-    borderRadius: Radii.md,
+    padding: 12,
+    borderRadius: 12,
   },
-  accionIcono: {
-    fontSize: 22,
+  accionIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accionLabel: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 12,
   },
 });

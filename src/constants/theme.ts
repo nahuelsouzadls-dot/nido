@@ -1,52 +1,52 @@
 export const LightColors = {
-  background: '#FAF8F5',
-  card: '#FFFFFF',
-  border: '#ECECEC',
+  // App background — warm rose, never pure white
+  background: '#F5F0F2',
 
-  textPrimary: '#1F1F1F',
-  textSecondary: '#6E6E73',
-  textTertiary: '#AEAEB2',
+  // Primary — burgundy
+  primary: '#6B2D3E',
+  primaryWarn: '#8B3A20',
+  primaryUrgent: '#5C1A1A',
+  primaryDark: '#4A1828',
+  primaryLight: '#E8C4CC',
 
-  primary: '#5E5CE6',
-  primaryLight: '#EAE9FB',
+  // Text
+  textPrimary: '#1E0A10',
+  textSecondary: '#8B5A65',
+  textTertiary: '#8B5A65',
+  textOnDark: '#F5F0F2',
 
-  success: '#34C759',
-  successLight: '#E8F9ED',
+  // Borders
+  border: '#DDD0D4',
+  borderSubtle: 'rgba(107,45,62,0.15)',
 
-  warning: '#FFB84D',
-  warningLight: '#FFF5E0',
+  // Cards
+  card: 'rgba(255,255,255,0.52)',
+  cardSage: 'rgba(90,122,72,0.08)',
 
-  danger: '#FF453A',
-  dangerLight: '#FFE9E8',
+  // Sage — goals, paid, success
+  sage: '#5A7A48',
+  sageDark: '#3A5A28',
+  sageLight: 'rgba(90,122,72,0.1)',
 
+  // Hero card numbers (on dark backgrounds)
+  heroOk: '#C8EAB0',
+  heroWarn: '#FFCBA4',
+  heroUrgent: '#FFBCB0',
+
+  // Legacy aliases used throughout existing code
+  success: '#5A7A48',
+  successLight: 'rgba(90,122,72,0.1)',
+  warning: '#8B3A20',
+  warningLight: 'rgba(139,58,32,0.1)',
+  danger: '#5C1A1A',
+  dangerLight: 'rgba(92,26,26,0.1)',
   shadow: 'rgba(0,0,0,0.06)',
 } as const;
 
-export const DarkColors = {
-  background: '#1C1C1E',
-  card: '#2C2C2E',
-  border: '#3A3A3C',
+// Dark mode: light-first per spec
+export const DarkColors = LightColors;
 
-  textPrimary: '#FFFFFF',
-  textSecondary: '#AEAEB2',
-  textTertiary: '#636366',
-
-  primary: '#7B79FF',
-  primaryLight: '#2A2960',
-
-  success: '#30D158',
-  successLight: '#1A3D26',
-
-  warning: '#FFD60A',
-  warningLight: '#3D2E00',
-
-  danger: '#FF453A',
-  dangerLight: '#3D1210',
-
-  shadow: 'rgba(0,0,0,0.3)',
-} as const;
-
-// Alias para imports estáticos fuera de componentes (scan screen, etc.)
+// Static alias for code outside components
 export const Colors = LightColors;
 
 export type ColorPalette = typeof LightColors;
@@ -63,22 +63,32 @@ export const Spacing = {
 export const Radii = {
   sm: 8,
   md: 12,
-  lg: 16,
-  xl: 24,
+  lg: 14,
+  xl: 20,
   full: 999,
 } as const;
 
 export const Typography = {
-  largeTitle: { fontSize: 34, fontWeight: '700' as const, letterSpacing: 0.4 },
-  title1: { fontSize: 28, fontWeight: '700' as const, letterSpacing: 0.3 },
-  title2: { fontSize: 22, fontWeight: '600' as const, letterSpacing: 0.2 },
-  title3: { fontSize: 20, fontWeight: '600' as const },
-  headline: { fontSize: 17, fontWeight: '600' as const },
-  body: { fontSize: 17, fontWeight: '400' as const },
-  callout: { fontSize: 16, fontWeight: '400' as const },
-  subhead: { fontSize: 15, fontWeight: '400' as const },
-  footnote: { fontSize: 13, fontWeight: '400' as const },
-  caption: { fontSize: 12, fontWeight: '400' as const },
+  // Nido type scale
+  display:     { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, letterSpacing: -0.4 },
+  h1:          { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, letterSpacing: -0.3 },
+  h2:          { fontFamily: 'Manrope_700Bold',      fontSize: 13 },
+  body:        { fontFamily: 'Manrope_600SemiBold',  fontSize: 11 },
+  label:       { fontFamily: 'Manrope_500Medium',    fontSize: 9 },
+  labelCaps:   { fontFamily: 'Manrope_700Bold',      fontSize: 8,  letterSpacing: 0.8 },
+  numeroGrande:{ fontFamily: 'Manrope_800ExtraBold', fontSize: 34, letterSpacing: -1 },
+  numeroHero:  { fontFamily: 'Manrope_800ExtraBold', fontSize: 22, letterSpacing: -0.8 },
+
+  // Legacy variant aliases — existing components use these names
+  largeTitle:  { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, letterSpacing: -0.4 },
+  title1:      { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, letterSpacing: -0.3 },
+  title2:      { fontFamily: 'Manrope_700Bold',      fontSize: 15 },
+  title3:      { fontFamily: 'Manrope_700Bold',      fontSize: 13 },
+  headline:    { fontFamily: 'Manrope_700Bold',      fontSize: 13 },
+  callout:     { fontFamily: 'Manrope_600SemiBold',  fontSize: 12 },
+  subhead:     { fontFamily: 'Manrope_600SemiBold',  fontSize: 11 },
+  footnote:    { fontFamily: 'Manrope_500Medium',    fontSize: 10 },
+  caption:     { fontFamily: 'Manrope_500Medium',    fontSize: 9 },
 } as const;
 
 export const Shadow = {

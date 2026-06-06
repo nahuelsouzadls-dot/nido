@@ -2,7 +2,14 @@ import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet, View, ActivityIndicator, useColorScheme } from 'react-native';
+import { StyleSheet, View, ActivityIndicator } from 'react-native';
+import { useFonts } from 'expo-font';
+import {
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+  Manrope_800ExtraBold,
+} from '@expo-google-fonts/manrope';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { registrarPushToken } from '@/services/notificaciones';
@@ -10,14 +17,16 @@ import { useColors } from '@/hooks/useColors';
 
 export default function RootLayout() {
   const { setSession, setLoading, cargarPerfil, perfil, loading } = useAuthStore();
-  const scheme = useColorScheme();
   const colors = useColors();
 
+  const [fontsLoaded] = useFonts({
+    Manrope_500Medium,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+    Manrope_800ExtraBold,
+  });
+
   useEffect(() => {
-    // onAuthStateChange dispara INITIAL_SESSION al registrarse con la sesión almacenada.
-    // Es la fuente de verdad recomendada en Supabase v2 — no necesitamos getSession().
-    // TOKEN_REFRESHED: el SDK refresca el token automáticamente; solo actualizamos el
-    // objeto de sesión sin recargar datos de perfil (no cambiaron).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'TOKEN_REFRESHED') {
         setSession(session);
@@ -40,10 +49,10 @@ export default function RootLayout() {
     }
   }, [perfil?.id]);
 
-  if (loading) {
+  if (loading || !fontsLoaded) {
     return (
       <GestureHandlerRootView style={styles.root}>
-        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+        <StatusBar style="dark" />
         <View style={[styles.splash, { backgroundColor: colors.background }]}>
           <ActivityIndicator color={colors.primary} size="large" />
         </View>
@@ -53,39 +62,21 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="modal/gasto"
-          options={{
-            presentation: 'modal',
-            headerShown: true,
-            title: 'Registrar gasto',
-            headerStyle: { backgroundColor: colors.card },
-            headerTintColor: colors.textPrimary,
-          }}
+          options={{ presentation: 'modal', headerShown: false }}
         />
         <Stack.Screen
           name="modal/factura"
-          options={{
-            presentation: 'modal',
-            headerShown: true,
-            title: 'Nueva factura',
-            headerStyle: { backgroundColor: colors.card },
-            headerTintColor: colors.textPrimary,
-          }}
+          options={{ presentation: 'modal', headerShown: false }}
         />
         <Stack.Screen
           name="modal/objetivo"
-          options={{
-            presentation: 'modal',
-            headerShown: true,
-            title: 'Nuevo objetivo',
-            headerStyle: { backgroundColor: colors.card },
-            headerTintColor: colors.textPrimary,
-          }}
+          options={{ presentation: 'modal', headerShown: false }}
         />
         <Stack.Screen
           name="modal/scan"
