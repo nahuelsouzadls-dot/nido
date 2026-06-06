@@ -44,31 +44,6 @@ export default function BalanceScreen() {
     );
   }
 
-  // Sin compañero
-  if (!companero) {
-    return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
-        <View style={styles.header}>
-          <RNText style={[styles.labelCaps, { color: colors.textSecondary }]}>
-            {formatMes(mes, anio).toUpperCase()}
-          </RNText>
-          <RNText style={[styles.title, { color: colors.textPrimary }]}>Balance</RNText>
-        </View>
-        <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIcon, { backgroundColor: 'rgba(107,45,62,0.08)' }]}>
-            <MaterialCommunityIcons name="account-plus-outline" size={26} color={colors.primary} />
-          </View>
-          <RNText style={[styles.emptyTitle, { color: colors.textPrimary }]}>
-            Esperando a tu compañero/a
-          </RNText>
-          <RNText style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-            Invitá a alguien a unirse al hogar para ver el balance compartido
-          </RNText>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   // Compute total
   const totalGastos = gastos.reduce((sum, g) => sum + g.monto, 0);
   const facturasPagadasMonto = facturas
@@ -83,20 +58,34 @@ export default function BalanceScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+      {/* Header — outside scroll, same pattern as facturas/objetivos */}
+      <View style={styles.header}>
+        <RNText style={[styles.labelCaps, { color: colors.textSecondary }]}>
+          {formatMes(mes, anio).toUpperCase()}
+        </RNText>
+        <RNText style={[styles.title, { color: colors.textPrimary }]}>Balance</RNText>
+      </View>
+
+      {/* Sin compañero */}
+      {!companero ? (
+        <View style={styles.emptyContainer}>
+          <View style={[styles.emptyIcon, { backgroundColor: 'rgba(107,45,62,0.08)' }]}>
+            <MaterialCommunityIcons name="account-plus-outline" size={26} color={colors.primary} />
+          </View>
+          <RNText style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+            Esperando a tu compañero/a
+          </RNText>
+          <RNText style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+            Invitá a alguien a unirse al hogar para ver el balance compartido
+          </RNText>
+        </View>
+      ) : (
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <RNText style={[styles.labelCaps, { color: colors.textSecondary }]}>
-            {formatMes(mes, anio).toUpperCase()}
-          </RNText>
-          <RNText style={[styles.title, { color: colors.textPrimary }]}>Balance</RNText>
-        </View>
-
         {/* BalanceHeroCard */}
         <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
           <RNText style={[styles.heroLabel, { color: colors.textSecondary }]}>
@@ -203,6 +192,7 @@ export default function BalanceScreen() {
           </View>
         )}
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -211,7 +201,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { flex: 1 },
   content: { padding: 16, gap: 16, paddingBottom: 100 },
-  header: { paddingTop: 8, gap: 2 },
+  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, gap: 2 },
   labelCaps: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
   title: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, letterSpacing: -0.4 },
 
