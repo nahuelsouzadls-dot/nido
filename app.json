@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FAF8F5"
+      "backgroundColor": "#F5F0F2"
     },
     "ios": {
       "supportsTablet": false,
@@ -39,8 +39,8 @@
       "name": "Nido",
       "shortName": "Nido",
       "description": "Tu hogar en tus manos. Gestión compartida de gastos y facturas.",
-      "themeColor": "#5E5CE6",
-      "backgroundColor": "#FAF8F5",
+      "themeColor": "#6B2D3E",
+      "backgroundColor": "#F5F0F2",
       "lang": "es",
       "display": "standalone",
       "orientation": "portrait",

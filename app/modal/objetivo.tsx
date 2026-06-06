@@ -7,16 +7,13 @@ import {
   Platform,
   Alert,
   TouchableOpacity,
+  Text as RNText,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Radii, Spacing } from '@/constants/theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
-import { Text } from '@/components/ui/Text';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
 import { useObjetivos } from '@/hooks/useObjetivos';
-
-const ICONOS = ['✈️', '🛋️', '📺', '🚗', '🏠', '💍', '🐾', '🎓', '💻', '🏖️', '🎉', '💰'];
 
 export default function ModalObjetivo() {
   const router = useRouter();
@@ -25,29 +22,28 @@ export default function ModalObjetivo() {
 
   const [nombre, setNombre] = useState('');
   const [monto, setMonto] = useState('');
-  const [descripcion, setDescripcion] = useState('');
-  const [icono, setIcono] = useState('🎯');
+  const [yaTeemos, setYaTenemos] = useState('');
   const [loading, setLoading] = useState(false);
+  const [nombreFocused, setNombreFocused] = useState(false);
+  const [yaFocused, setYaFocused] = useState(false);
 
   const handleGuardar = async () => {
     if (!nombre.trim() || !monto) {
       Alert.alert('Campos requeridos', 'Completá el nombre y el monto objetivo');
       return;
     }
-
     const montoNum = parseFloat(monto.replace(',', '.'));
     if (isNaN(montoNum) || montoNum <= 0) {
       Alert.alert('Monto inválido', 'Ingresá un monto válido');
       return;
     }
-
     setLoading(true);
     try {
       await crear({
         nombre: nombre.trim(),
-        descripcion: descripcion.trim() || null,
+        descripcion: null,
         monto_objetivo: montoNum,
-        icono,
+        icono: 'target',
         fecha_objetivo: null,
       });
       router.back();
@@ -60,90 +56,110 @@ export default function ModalObjetivo() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Top bar */}
+      <View style={[styles.topBar, { backgroundColor: colors.background, borderBottomColor: colors.borderSubtle }]}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <MaterialCommunityIcons name="close" size={22} color={colors.textSecondary} />
+        </TouchableOpacity>
+        <RNText style={[styles.topTitle, { color: colors.textPrimary }]}>Nuevo objetivo</RNText>
+        <TouchableOpacity onPress={handleGuardar} disabled={loading}>
+          <RNText style={[styles.topSave, { color: loading ? colors.textSecondary : colors.sage }]}>Guardar</RNText>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         style={[styles.scroll, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Icono */}
-        <View style={styles.seccion}>
-          <Text variant="footnote" color={colors.textSecondary}>
-            Icono
-          </Text>
-          <View style={styles.iconosGrid}>
-            {ICONOS.map((i) => (
-              <TouchableOpacity
-                key={i}
-                style={[
-                  styles.iconoBtn,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                  icono === i && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-                ]}
-                onPress={() => setIcono(i)}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 24 }}>{i}</Text>
-              </TouchableOpacity>
-            ))}
+        {/* Meta monto */}
+        <View style={[styles.montoCard, { backgroundColor: 'rgba(90,122,72,0.06)', borderColor: 'rgba(90,122,72,0.2)' }]}>
+          <RNText style={[styles.montoLabel, { color: colors.sage }]}>META</RNText>
+          <View style={styles.montoRow}>
+            <RNText style={[styles.montoSign, { color: colors.textSecondary }]}>$</RNText>
+            <TextInput
+              style={[styles.montoInput, { color: colors.textPrimary }]}
+              placeholder="0"
+              placeholderTextColor={colors.textSecondary}
+              value={monto}
+              onChangeText={setMonto}
+              keyboardType="numeric"
+              returnKeyType="next"
+              autoFocus
+            />
           </View>
         </View>
 
-        <Input
-          label="Nombre del objetivo"
-          value={nombre}
-          onChangeText={setNombre}
-          placeholder="Ej: Vacaciones, Sofá nuevo, TV..."
-          returnKeyType="next"
-          autoFocus
-        />
+        {/* Campos */}
+        <View style={[styles.fieldsCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
+          <View style={styles.fieldRow}>
+            <RNText style={[styles.fieldLabel, { color: colors.textSecondary }]}>Nombre</RNText>
+            <TextInput
+              style={[styles.fieldInput, {
+                backgroundColor: nombreFocused ? 'rgba(255,255,255,0.85)' : 'transparent',
+                borderColor: nombreFocused ? colors.sage : 'transparent',
+                color: colors.textPrimary,
+              }]}
+              placeholder="¿Qué están ahorrando?"
+              placeholderTextColor={colors.textSecondary}
+              value={nombre}
+              onChangeText={setNombre}
+              returnKeyType="next"
+              onFocus={() => setNombreFocused(true)}
+              onBlur={() => setNombreFocused(false)}
+            />
+          </View>
+          <View style={[styles.fieldSep, { backgroundColor: colors.borderSubtle }]} />
+          <View style={styles.fieldRow}>
+            <RNText style={[styles.fieldLabel, { color: colors.textSecondary }]}>Ya tenemos</RNText>
+            <TextInput
+              style={[styles.fieldInput, {
+                backgroundColor: yaFocused ? 'rgba(255,255,255,0.85)' : 'transparent',
+                borderColor: yaFocused ? colors.sage : 'transparent',
+                color: colors.textPrimary,
+              }]}
+              placeholder="0 (opcional)"
+              placeholderTextColor={colors.textSecondary}
+              value={yaTeemos}
+              onChangeText={setYaTenemos}
+              keyboardType="numeric"
+              returnKeyType="done"
+              onFocus={() => setYaFocused(true)}
+              onBlur={() => setYaFocused(false)}
+            />
+          </View>
+        </View>
 
-        <Input
-          label="Monto objetivo"
-          value={monto}
-          onChangeText={setMonto}
-          placeholder="0"
-          keyboardType="numeric"
-          prefix="$"
-          returnKeyType="next"
-        />
-
-        <Input
-          label="Descripción (opcional)"
-          value={descripcion}
-          onChangeText={setDescripcion}
-          placeholder="Agregá detalles..."
-          multiline
-          numberOfLines={2}
-        />
-
-        <Button
-          label="Crear objetivo"
+        {/* Save button */}
+        <TouchableOpacity
+          style={[styles.saveBtn, { backgroundColor: colors.sage, opacity: loading ? 0.6 : 1 }]}
           onPress={handleGuardar}
-          loading={loading}
-          size="lg"
-          icon={icono}
-          style={{ marginTop: 8 }}
-        />
+          disabled={loading}
+          activeOpacity={0.8}
+        >
+          <RNText style={styles.saveBtnText}>{loading ? 'Creando...' : 'Crear objetivo'}</RNText>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 0.5 },
+  topTitle: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
+  topSave: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
   scroll: { flex: 1 },
-  content: { padding: Spacing.md, gap: 20, paddingBottom: 60 },
-  seccion: { gap: 8 },
-  iconosGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  iconoBtn: {
-    width: 52,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radii.md,
-    borderWidth: 1.5,
-  },
+  content: { padding: 16, gap: 14, paddingBottom: 60 },
+  montoCard: { borderRadius: 14, borderWidth: 0.5, padding: 16, alignItems: 'center', gap: 6 },
+  montoLabel: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
+  montoRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  montoSign: { fontFamily: 'Manrope_700Bold', fontSize: 20 },
+  montoInput: { fontFamily: 'Manrope_800ExtraBold', fontSize: 34, letterSpacing: -1, textAlign: 'center', minWidth: 80 },
+  fieldsCard: { borderRadius: 14, borderWidth: 0.5, overflow: 'hidden' },
+  fieldRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 4 },
+  fieldLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, width: 100 },
+  fieldInput: { flex: 1, fontFamily: 'Manrope_600SemiBold', fontSize: 11, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8, borderWidth: 0.5 },
+  fieldSep: { height: 0.5, marginHorizontal: 14 },
+  saveBtn: { borderRadius: 13, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  saveBtnText: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: '#fff' },
 });

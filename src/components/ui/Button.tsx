@@ -19,7 +19,6 @@ type Props = TouchableOpacityProps & {
   size?: Size;
   label: string;
   loading?: boolean;
-  icon?: string;
 };
 
 export function Button({
@@ -27,7 +26,6 @@ export function Button({
   size = 'md',
   label,
   loading = false,
-  icon,
   style,
   onPress,
   ...props
@@ -65,7 +63,6 @@ export function Button({
         <ActivityIndicator color={variant === 'primary' ? '#fff' : colors.primary} size="small" />
       ) : (
         <View style={styles.content}>
-          {icon ? <Text style={styles.icon}>{icon}</Text> : null}
           <Text
             style={[
               styles.label,

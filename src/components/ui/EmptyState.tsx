@@ -11,8 +11,6 @@ type Props = {
   descripcion?: string;
   ctaLabel?: string;
   onCta?: () => void;
-  // Legacy prop — ignored
-  emoji?: string;
 };
 
 export function EmptyState({ icon = 'file-document-outline', titulo, descripcion, ctaLabel, onCta }: Props) {

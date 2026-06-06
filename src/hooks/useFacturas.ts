@@ -102,6 +102,33 @@ export function useFacturas(mes: number, anio: number) {
       if (!hogar || !perfil) return;
 
       const factura = facturas.find((f) => f.id === facturaId);
+
+      // Optimistic update: flip to 'pagada' before the network round-trip
+      // so the UI responds instantly. cargar() at the end reconciles with
+      // the real server state (including the generated id/timestamps).
+      setFacturas((prev) =>
+        prev.map((f) =>
+          f.id !== facturaId
+            ? f
+            : {
+                ...f,
+                pago_actual: {
+                  id: '__optimistic__',
+                  factura_id: facturaId,
+                  hogar_id: hogar.id,
+                  mes,
+                  anio,
+                  monto: monto ?? null,
+                  estado: 'pagada' as const,
+                  pagado_por: perfil.id,
+                  fecha_pago: new Date().toISOString(),
+                  created_at: new Date().toISOString(),
+                  pagador: perfil,
+                },
+              }
+        )
+      );
+
       await pagarFactura(facturaId, hogar.id, mes, anio, perfil.id, monto);
 
       await registrarActividad({
@@ -120,6 +147,7 @@ export function useFacturas(mes: number, anio: number) {
         monto ? `Monto: $${monto.toLocaleString('es-UY')}` : 'Factura pagada',
       );
 
+      // Re-fetch to replace the optimistic record with the real server state
       await cargar();
     },
     [hogar, perfil, facturas, mes, anio, cargar],

@@ -12,12 +12,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useAuthStore } from '@/store/auth';
-import { useActividad } from '@/hooks/useActividad';
 import { useFacturas } from '@/hooks/useFacturas';
-import { useObjetivos } from '@/hooks/useObjetivos';
-import { useGastos } from '@/hooks/useGastos';
 import { Avatar } from '@/components/ui/Avatar';
-import { ActividadItem } from '@/components/ActividadItem';
 import { FAB } from '@/components/FAB';
 import { formatMonto, formatMes } from '@/utils/format';
 import type { Factura } from '@/types';
@@ -83,16 +79,12 @@ export default function HomeScreen() {
   const mes = hoy.getMonth() + 1;
   const anio = hoy.getFullYear();
 
-  const { actividad, recargar: recargarAct } = useActividad();
-  const { facturas, pendientes, vencidas } = useFacturas(mes, anio);
-  const { objetivos } = useObjetivos();
-  const { totalMes } = useGastos(mes, anio);
-
+  const { facturas, pendientes, vencidas, recargar } = useFacturas(mes, anio);
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = async () => {
     setRefreshing(true);
-    await recargarAct();
+    await recargar();
     setRefreshing(false);
   };
 
@@ -119,7 +111,6 @@ export default function HomeScreen() {
   const hc = HERO_COLORS[heroState];
 
   const pagadas = facturas.filter((f) => f.pago_actual?.estado === 'pagada');
-  const objetivosActivos = objetivos.filter((o) => !o.completado).slice(0, 2);
   const nombre = perfil?.nombre.split(' ')[0] ?? 'Vos';
   const hora = hoy.getHours();
   const saludo = hora < 12 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches';
@@ -226,54 +217,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Objetivos activos */}
-        {objetivosActivos.length > 0 && (
-          <View style={styles.seccion}>
-            <View style={styles.seccionHeader}>
-              <RNText style={[styles.seccionTitle, { color: colors.textPrimary }]}>Objetivos</RNText>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/objetivos')}>
-                <RNText style={[styles.seccionLink, { color: colors.sage }]}>Ver todos</RNText>
-              </TouchableOpacity>
-            </View>
-            {objetivosActivos.map((obj) => {
-              const pct = Math.min(100, Math.round((obj.monto_actual / obj.monto_objetivo) * 100));
-              return (
-                <View key={obj.id} style={[styles.miniObj, { backgroundColor: colors.cardSage, borderColor: 'rgba(90,122,72,0.2)' }]}>
-                  <View style={styles.miniObjTop}>
-                    <RNText style={[styles.miniObjName, { color: colors.textPrimary }]}>{obj.nombre}</RNText>
-                    <RNText style={[styles.miniObjPct, { color: colors.sage }]}>{pct}%</RNText>
-                  </View>
-                  <View style={[styles.miniObjTrack, { backgroundColor: 'rgba(90,122,72,0.15)' }]}>
-                    <View style={[styles.miniObjFill, { width: `${pct}%` as `${number}%`, backgroundColor: colors.sage }]} />
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Actividad */}
-        <View style={styles.seccion}>
-          <RNText style={[styles.seccionTitle, { color: colors.textPrimary }]}>Actividad</RNText>
-          {actividad.length === 0 ? (
-            <View style={[styles.actEmpty, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
-              <RNText style={[styles.actEmptyText, { color: colors.textSecondary }]}>
-                Las acciones del hogar aparecerán aquí
-              </RNText>
-            </View>
-          ) : (
-            <View style={[styles.actCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
-              {actividad.map((item, idx) => (
-                <React.Fragment key={item.id}>
-                  <ActividadItem item={item} />
-                  {idx < actividad.length - 1 && (
-                    <View style={styles.actSep} />
-                  )}
-                </React.Fragment>
-              ))}
-            </View>
-          )}
-        </View>
       </ScrollView>
 
       <FAB />
@@ -324,17 +267,4 @@ const styles = StyleSheet.create({
   seccionTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 13, letterSpacing: -0.3 },
   seccionLink: { fontFamily: 'Manrope_600SemiBold', fontSize: 10 },
 
-  // Mini objetivo
-  miniObj: { borderRadius: 14, borderWidth: 0.5, padding: 12, gap: 8 },
-  miniObjTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  miniObjName: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
-  miniObjPct: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
-  miniObjTrack: { height: 5, borderRadius: 3, overflow: 'hidden' },
-  miniObjFill: { height: 5, borderRadius: 3 },
-
-  // Activity
-  actCard: { borderRadius: 14, borderWidth: 0.5, overflow: 'hidden' },
-  actEmpty: { borderRadius: 14, borderWidth: 0.5, padding: 20, alignItems: 'center' },
-  actEmptyText: { fontFamily: 'Manrope_500Medium', fontSize: 11 },
-  actSep: { height: 0.5, backgroundColor: 'rgba(30,10,16,0.06)', marginLeft: 10 },
 });

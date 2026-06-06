@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Text } from '@/components/ui/Text';
+import { View, StyleSheet, TouchableOpacity, Text as RNText } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Avatar } from '@/components/ui/Avatar';
 import { useColors } from '@/hooks/useColors';
 import { formatMonto, formatFechaRelativa } from '@/utils/format';
@@ -12,41 +12,53 @@ type Props = {
   onLongPress?: () => void;
 };
 
+function getIconName(icono: string): keyof typeof MaterialCommunityIcons.glyphMap {
+  // Handle both new MCIcons names and legacy emoji strings
+  const LEGACY_MAP: Record<string, keyof typeof MaterialCommunityIcons.glyphMap> = {
+    '🛒': 'cart-outline',
+    '🏠': 'home-outline',
+    '💡': 'lightning-bolt',
+    '🚗': 'car-outline',
+    '🐾': 'paw-outline',
+    '🍽️': 'silverware-fork-knife',
+    '💊': 'medical-bag',
+    '📦': 'dots-horizontal',
+  };
+  if (LEGACY_MAP[icono]) return LEGACY_MAP[icono];
+  return (icono as keyof typeof MaterialCommunityIcons.glyphMap) || 'dots-horizontal';
+}
+
 export function GastoRow({ gasto, onPress, onLongPress }: Props) {
   const colors = useColors();
-  const icono = gasto.categoria?.icono ?? '📦';
+  const iconName = getIconName(gasto.categoria?.icono ?? 'dots-horizontal');
   const categoria = gasto.categoria?.nombre ?? 'Otros';
   const pagadorNombre = gasto.perfil?.nombre ?? 'Desconocido';
 
   return (
     <TouchableOpacity
-      style={[styles.container, { backgroundColor: colors.card, borderBottomColor: colors.border }]}
+      style={[styles.container, { borderBottomColor: 'rgba(30,10,16,0.06)' }]}
       onPress={onPress}
       onLongPress={onLongPress}
       activeOpacity={0.7}
     >
-      <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
-        <Text style={styles.icono}>{icono}</Text>
+      <View style={[styles.iconBox, { backgroundColor: 'rgba(107,45,62,0.07)' }]}>
+        <MaterialCommunityIcons name={iconName} size={18} color={colors.primary} />
       </View>
 
       <View style={styles.info}>
-        <Text variant="callout" style={{ fontWeight: '600' }}>
-          {gasto.descripcion}
-        </Text>
-        <Text variant="caption" color={colors.textSecondary}>
+        <RNText style={[styles.descripcion, { color: colors.textPrimary }]}>{gasto.descripcion}</RNText>
+        <RNText style={[styles.meta, { color: colors.textSecondary }]}>
           {categoria} · {formatFechaRelativa(gasto.fecha)}
-        </Text>
+        </RNText>
       </View>
 
       <View style={styles.right}>
-        <Text variant="callout" style={{ fontWeight: '700' }}>
-          {formatMonto(gasto.monto)}
-        </Text>
+        <RNText style={[styles.monto, { color: colors.textPrimary }]}>{formatMonto(gasto.monto)}</RNText>
         <View style={styles.pagador}>
-          <Avatar nombre={pagadorNombre} url={gasto.perfil?.avatar_url} size={18} />
-          <Text variant="caption" color={colors.textSecondary}>
+          <Avatar nombre={pagadorNombre} url={gasto.perfil?.avatar_url} size={16} color={colors.primaryLight} />
+          <RNText style={[styles.pagadorNombre, { color: colors.textSecondary }]}>
             {pagadorNombre.split(' ')[0]}
-          </Text>
+          </RNText>
         </View>
       </View>
     </TouchableOpacity>
@@ -57,32 +69,24 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    gap: 12,
-    borderBottomWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    gap: 10,
+    borderBottomWidth: 0.5,
   },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  icono: {
-    fontSize: 22,
-  },
-  info: {
-    flex: 1,
-    gap: 2,
-  },
-  right: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  pagador: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
+  info: { flex: 1, gap: 2 },
+  descripcion: { fontFamily: 'Manrope_600SemiBold', fontSize: 11 },
+  meta: { fontFamily: 'Manrope_500Medium', fontSize: 9 },
+  right: { alignItems: 'flex-end', gap: 3 },
+  monto: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
+  pagador: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  pagadorNombre: { fontFamily: 'Manrope_500Medium', fontSize: 9 },
 });

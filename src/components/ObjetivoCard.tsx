@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text as RNText } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { formatMonto } from '@/utils/format';
 import type { Objetivo } from '@/types';
@@ -7,9 +8,10 @@ import type { Objetivo } from '@/types';
 type Props = {
   objetivo: Objetivo;
   onPress?: () => void;
+  onDelete?: () => void;
 };
 
-export function ObjetivoCard({ objetivo, onPress }: Props) {
+export function ObjetivoCard({ objetivo, onPress, onDelete }: Props) {
   const colors = useColors();
   const progreso = objetivo.monto_actual / objetivo.monto_objetivo;
   const porcentaje = Math.min(Math.round(progreso * 100), 100);
@@ -24,7 +26,18 @@ export function ObjetivoCard({ objetivo, onPress }: Props) {
       {/* Top row */}
       <View style={styles.topRow}>
         <RNText style={[styles.nombre, { color: colors.textPrimary }]}>{objetivo.nombre}</RNText>
-        <RNText style={[styles.porcentaje, { color: colors.sage }]}>{porcentaje}%</RNText>
+        <View style={styles.topRight}>
+          <RNText style={[styles.porcentaje, { color: colors.sage }]}>{porcentaje}%</RNText>
+          {onDelete && (
+            <TouchableOpacity
+              onPress={onDelete}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.6}
+            >
+              <MaterialCommunityIcons name="trash-can-outline" size={15} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Progress bar */}
@@ -68,6 +81,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  topRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   nombre: {
     fontFamily: 'Manrope_700Bold',

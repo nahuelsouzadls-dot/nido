@@ -5,6 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
+  Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -19,7 +21,7 @@ export default function ObjetivosScreen() {
   const router = useRouter();
   const colors = useColors();
   const hoy = new Date();
-  const { objetivos, recargar } = useObjetivos();
+  const { objetivos, recargar, eliminar } = useObjetivos();
   const [refreshing, setRefreshing] = useState(false);
 
   const activos = objetivos.filter((o) => !o.completado);
@@ -29,6 +31,22 @@ export default function ObjetivosScreen() {
     setRefreshing(true);
     await recargar();
     setRefreshing(false);
+  };
+
+  const handleEliminar = (id: string, nombre: string) => {
+    if (Platform.OS === 'web') {
+      if (!window.confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+      eliminar(id);
+    } else {
+      Alert.alert(
+        `Eliminar objetivo`,
+        `¿Querés eliminar "${nombre}"? Esta acción no se puede deshacer.`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Eliminar', style: 'destructive', onPress: () => eliminar(id) },
+        ],
+      );
+    }
   };
 
   return (
@@ -83,6 +101,7 @@ export default function ObjetivosScreen() {
                 key={obj.id}
                 objetivo={obj}
                 onPress={() => router.push('/modal/objetivo')}
+                onDelete={() => handleEliminar(obj.id, obj.nombre)}
               />
             ))}
 
@@ -107,7 +126,11 @@ export default function ObjetivosScreen() {
                   COMPLETADOS
                 </Text>
                 {completados.map((obj) => (
-                  <ObjetivoCard key={obj.id} objetivo={obj} />
+                  <ObjetivoCard
+                    key={obj.id}
+                    objetivo={obj}
+                    onDelete={() => handleEliminar(obj.id, obj.nombre)}
+                  />
                 ))}
               </View>
             )}

@@ -58,14 +58,14 @@ export function useObjetivos() {
           hogar_id: hogar.id,
           perfil_id: perfil.id,
           tipo: 'objetivo_completado',
-          titulo: `🎉 Completaron el objetivo "${objetivo?.nombre}"`,
+          titulo: `Completaron el objetivo "${objetivo?.nombre}"`,
           descripcion: `Meta: $${objetivo?.monto_objetivo.toLocaleString('es-UY')}`,
         });
 
         await notificarCompanero(
           hogar.id,
           perfil.id,
-          `🎉 Objetivo completado`,
+          `Objetivo completado`,
           `Completaron "${objetivo?.nombre}"`,
         );
       } else {

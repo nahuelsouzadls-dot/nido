@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text as RNText } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Radii } from '@/constants/theme';
-import { Text } from '@/components/ui/Text';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // El escaneo de recibos con cámara no está disponible en web.
 // En la app móvil, esta pantalla usa expo-camera + OCR.
@@ -11,15 +10,15 @@ export default function ScanScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.icono}>📷</Text>
-      <Text variant="headline" align="center" style={styles.titulo}>
-        No disponible en web
-      </Text>
-      <Text variant="subhead" align="center" style={styles.descripcion}>
+      <View style={styles.iconBox}>
+        <MaterialCommunityIcons name="camera-outline" size={32} color="rgba(255,255,255,0.7)" />
+      </View>
+      <RNText style={styles.titulo}>No disponible en web</RNText>
+      <RNText style={styles.descripcion}>
         El escaneo de recibos está disponible en la app móvil
-      </Text>
+      </RNText>
       <TouchableOpacity style={styles.btn} onPress={() => router.back()}>
-        <Text style={styles.btnTexto}>Volver</Text>
+        <RNText style={styles.btnTexto}>Volver</RNText>
       </TouchableOpacity>
     </View>
   );
@@ -28,33 +27,44 @@ export default function ScanScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: '#1E0A10',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
     gap: 16,
   },
-  icono: {
-    fontSize: 64,
+  iconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 8,
   },
   titulo: {
-    color: '#FFFFFF',
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 15,
+    color: '#F5F0F2',
+    textAlign: 'center',
   },
   descripcion: {
-    color: 'rgba(255,255,255,0.6)',
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 11,
+    color: 'rgba(245,240,242,0.6)',
     textAlign: 'center',
+    lineHeight: 16,
   },
   btn: {
     marginTop: 16,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#6B2D3E',
     paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: Radii.md,
+    paddingVertical: 12,
+    borderRadius: 13,
   },
   btnTexto: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 13,
     color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
   },
 });
