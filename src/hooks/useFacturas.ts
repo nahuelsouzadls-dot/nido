@@ -138,21 +138,24 @@ export function useFacturas(mes: number, anio: number, options?: { scope?: Scope
       try {
         await pagarFactura(facturaId, hogar.id, mes, anio, perfil.id, monto);
 
-        await registrarActividad({
-          hogar_id: hogar.id,
-          perfil_id: perfil.id,
-          tipo: 'factura_pagada',
-          titulo: `${perfil.nombre} pagó ${factura?.nombre ?? 'una factura'}`,
-          descripcion: monto ? `$${monto.toLocaleString('es-UY')}` : undefined,
-          metadata: { factura_id: facturaId },
-        });
+        // Facturas personales son privadas — no registrar actividad ni notificar
+        if (factura?.scope !== 'personal') {
+          await registrarActividad({
+            hogar_id: hogar.id,
+            perfil_id: perfil.id,
+            tipo: 'factura_pagada',
+            titulo: `${perfil.nombre} pagó ${factura?.nombre ?? 'una factura'}`,
+            descripcion: monto ? `$${monto.toLocaleString('es-UY')}` : undefined,
+            metadata: { factura_id: facturaId },
+          });
 
-        await notificarCompanero(
-          hogar.id,
-          perfil.id,
-          `${perfil.nombre} pagó ${factura?.nombre ?? 'una factura'}`,
-          monto ? `Monto: $${monto.toLocaleString('es-UY')}` : 'Factura pagada',
-        );
+          await notificarCompanero(
+            hogar.id,
+            perfil.id,
+            `${perfil.nombre} pagó ${factura?.nombre ?? 'una factura'}`,
+            monto ? `Monto: $${monto.toLocaleString('es-UY')}` : 'Factura pagada',
+          );
+        }
       } catch (e) {
         // Revert the optimistic update so the card goes back to its real state
         setFacturas((prev) =>

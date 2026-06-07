@@ -171,15 +171,17 @@ function AportarObjetivo({
   nombre,
   montoObjetivo,
   montoActual,
+  scope,
 }: {
   id: string;
   nombre: string;
   montoObjetivo: number;
   montoActual: number;
+  scope: Scope;
 }) {
   const router = useRouter();
   const colors = useColors();
-  const { aportar } = useObjetivos();
+  const { aportar } = useObjetivos({ scope });
 
   const [monto, setMonto] = useState('');
   const [loading, setLoading] = useState(false);
@@ -279,6 +281,7 @@ export default function ModalObjetivo() {
     nombre?: string;
     montoObjetivo?: string;
     montoActual?: string;
+    scope?: string;
   }>();
 
   if (params.modo === 'aportar' && params.id && params.nombre) {
@@ -288,6 +291,7 @@ export default function ModalObjetivo() {
         nombre={params.nombre}
         montoObjetivo={parseFloat(params.montoObjetivo ?? '0')}
         montoActual={parseFloat(params.montoActual ?? '0')}
+        scope={(params.scope as Scope) ?? 'hogar'}
       />
     );
   }

@@ -122,6 +122,7 @@ export default function ObjetivosScreen() {
                     nombre: obj.nombre,
                     montoObjetivo: obj.monto_objetivo.toString(),
                     montoActual: obj.monto_actual.toString(),
+                    scope: obj.scope,
                   },
                 })}
                 onDelete={() => handleEliminar(obj.id, obj.nombre)}

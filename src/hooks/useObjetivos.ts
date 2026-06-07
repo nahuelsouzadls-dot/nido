@@ -57,34 +57,37 @@ export function useObjetivos(options?: { scope?: Scope }) {
       const objetivo = objetivos.find((o) => o.id === objetivoId);
       const actualizado = await aportarObjetivo(objetivoId, perfil.id, monto, nota);
 
-      if (actualizado?.completado && !objetivo?.completado) {
-        await registrarActividad({
-          hogar_id: hogar.id,
-          perfil_id: perfil.id,
-          tipo: 'objetivo_completado',
-          titulo: `Completaron el objetivo "${objetivo?.nombre}"`,
-          descripcion: `Meta: $${objetivo?.monto_objetivo.toLocaleString('es-UY')}`,
-        });
+      // Objetivos personales son privados — no registrar actividad ni notificar
+      if (scope !== 'personal') {
+        if (actualizado?.completado && !objetivo?.completado) {
+          await registrarActividad({
+            hogar_id: hogar.id,
+            perfil_id: perfil.id,
+            tipo: 'objetivo_completado',
+            titulo: `Completaron el objetivo "${objetivo?.nombre}"`,
+            descripcion: `Meta: $${objetivo?.monto_objetivo.toLocaleString('es-UY')}`,
+          });
 
-        await notificarCompanero(
-          hogar.id,
-          perfil.id,
-          `Objetivo completado`,
-          `Completaron "${objetivo?.nombre}"`,
-        );
-      } else {
-        await registrarActividad({
-          hogar_id: hogar.id,
-          perfil_id: perfil.id,
-          tipo: 'aporte_objetivo',
-          titulo: `${perfil.nombre} aportó al objetivo`,
-          descripcion: `${objetivo?.nombre} · $${monto.toLocaleString('es-UY')}`,
-        });
+          await notificarCompanero(
+            hogar.id,
+            perfil.id,
+            `Objetivo completado`,
+            `Completaron "${objetivo?.nombre}"`,
+          );
+        } else {
+          await registrarActividad({
+            hogar_id: hogar.id,
+            perfil_id: perfil.id,
+            tipo: 'aporte_objetivo',
+            titulo: `${perfil.nombre} aportó al objetivo`,
+            descripcion: `${objetivo?.nombre} · $${monto.toLocaleString('es-UY')}`,
+          });
+        }
       }
 
       await cargar();
     },
-    [hogar, perfil, objetivos, cargar],
+    [hogar, perfil, objetivos, cargar, scope],
   );
 
   const eliminar = useCallback(
