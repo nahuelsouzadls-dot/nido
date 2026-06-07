@@ -5,6 +5,8 @@ import {
   StyleSheet,
   RefreshControl,
   TouchableOpacity,
+  ActivityIndicator,
+  Platform,
   Alert,
   Text as RNText,
 } from 'react-native';
@@ -78,20 +80,29 @@ export default function FacturasScreen() {
             {isPersonal ? 'Mis facturas' : 'Facturas'}
           </RNText>
         </View>
-        {todasPagadas ? (
-          <View style={[styles.allDoneBadge, { backgroundColor: colors.sageLight }]}>
-            <MaterialCommunityIcons name="check" size={12} color={colors.sage} />
-            <RNText style={[styles.allDoneText, { color: colors.sageDark }]}>Todo al día</RNText>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.primary }]}
-            onPress={() => router.push('/modal/factura')}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="plus" size={18} color="#fff" />
-          </TouchableOpacity>
-        )}
+        <View style={styles.headerRight}>
+          {Platform.OS === 'web' && (
+            <TouchableOpacity onPress={refresh} disabled={refreshing} style={styles.refreshBtn}>
+              {refreshing
+                ? <ActivityIndicator size="small" color={isPersonal ? colors.personal : colors.primary} />
+                : <MaterialCommunityIcons name="refresh" size={18} color={colors.textSecondary} />}
+            </TouchableOpacity>
+          )}
+          {todasPagadas ? (
+            <View style={[styles.allDoneBadge, { backgroundColor: colors.sageLight }]}>
+              <MaterialCommunityIcons name="check" size={12} color={colors.sage} />
+              <RNText style={[styles.allDoneText, { color: colors.sageDark }]}>Todo al día</RNText>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.addBtn, { backgroundColor: colors.primary }]}
+              onPress={() => router.push('/modal/factura')}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons name="plus" size={18} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Context selector */}
@@ -199,6 +210,8 @@ const styles = StyleSheet.create({
   },
   labelCaps: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
   title: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, letterSpacing: -0.4, marginTop: 2 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  refreshBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(30,10,16,0.06)' },
   allDoneBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   allDoneText: { fontFamily: 'Manrope_700Bold', fontSize: 10 },
   addBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },

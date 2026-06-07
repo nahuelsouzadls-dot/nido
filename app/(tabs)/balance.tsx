@@ -5,6 +5,8 @@ import {
   StyleSheet,
   RefreshControl,
   ActivityIndicator,
+  TouchableOpacity,
+  Platform,
   Text as RNText,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -76,10 +78,19 @@ export default function BalanceScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header — outside scroll, same pattern as facturas/objetivos */}
       <View style={styles.header}>
-        <RNText style={[styles.labelCaps, { color: colors.textSecondary }]}>
-          {formatMes(mes, anio).toUpperCase()}
-        </RNText>
-        <RNText style={[styles.title, { color: colors.textPrimary }]}>Balance</RNText>
+        <View>
+          <RNText style={[styles.labelCaps, { color: colors.textSecondary }]}>
+            {formatMes(mes, anio).toUpperCase()}
+          </RNText>
+          <RNText style={[styles.title, { color: colors.textPrimary }]}>Balance</RNText>
+        </View>
+        {Platform.OS === 'web' && (
+          <TouchableOpacity onPress={refresh} disabled={refreshing} style={styles.refreshBtn}>
+            {refreshing
+              ? <ActivityIndicator size="small" color={isPersonal ? colors.personal : colors.primary} />
+              : <MaterialCommunityIcons name="refresh" size={18} color={colors.textSecondary} />}
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Sin compañero — solo en modo hogar */}
@@ -295,7 +306,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { flex: 1 },
   content: { padding: 16, gap: 16, paddingBottom: 100 },
-  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, gap: 2 },
+  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  refreshBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(30,10,16,0.06)' },
   miniGrid: { flexDirection: 'row', gap: 10 },
   labelCaps: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
   title: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, letterSpacing: -0.4 },

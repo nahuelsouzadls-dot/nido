@@ -5,6 +5,8 @@ import {
   StyleSheet,
   RefreshControl,
   TouchableOpacity,
+  ActivityIndicator,
+  Platform,
   Text as RNText,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -139,9 +141,18 @@ export default function HomeScreen() {
               {saludo}, {nombre}
             </RNText>
           </View>
-          <View style={styles.avatares}>
-            {perfil ? <Avatar nombre={perfil.nombre} url={perfil.avatar_url} size={36} color={colors.primaryLight} /> : null}
-            {companero ? <Avatar nombre={companero.nombre} url={companero.avatar_url} size={36} color={colors.primaryLight} /> : null}
+          <View style={styles.headerRight}>
+            {Platform.OS === 'web' && (
+              <TouchableOpacity onPress={refresh} disabled={refreshing} style={styles.refreshBtn}>
+                {refreshing
+                  ? <ActivityIndicator size="small" color={activeContext === 'personal' ? colors.personal : colors.primary} />
+                  : <MaterialCommunityIcons name="refresh" size={18} color={colors.textSecondary} />}
+              </TouchableOpacity>
+            )}
+            <View style={styles.avatares}>
+              {perfil ? <Avatar nombre={perfil.nombre} url={perfil.avatar_url} size={36} color={colors.primaryLight} /> : null}
+              {companero ? <Avatar nombre={companero.nombre} url={companero.avatar_url} size={36} color={colors.primaryLight} /> : null}
+            </View>
           </View>
         </View>
 
@@ -249,7 +260,9 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8 },
   labelCaps: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
   greeting: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, letterSpacing: -0.4, marginTop: 2 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   avatares: { flexDirection: 'row', gap: -8 },
+  refreshBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(30,10,16,0.06)' },
 
   // HeroCard
   heroCard: { borderRadius: 16, padding: 16, gap: 16 },

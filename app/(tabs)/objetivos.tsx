@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
+  ActivityIndicator,
   Alert,
   Platform,
 } from 'react-native';
@@ -65,13 +66,22 @@ export default function ObjetivosScreen() {
           </Text>
           <Text style={[styles.title, { color: colors.textPrimary }]}>Objetivos</Text>
         </View>
-        <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: accentColor }]}
-          onPress={() => router.push('/modal/objetivo')}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="plus" size={18} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          {Platform.OS === 'web' && (
+            <TouchableOpacity onPress={refresh} disabled={refreshing} style={styles.refreshBtn}>
+              {refreshing
+                ? <ActivityIndicator size="small" color={accentColor} />
+                : <MaterialCommunityIcons name="refresh" size={18} color={colors.textSecondary} />}
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.addBtn, { backgroundColor: accentColor }]}
+            onPress={() => router.push('/modal/objetivo')}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="plus" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -190,6 +200,8 @@ const styles = StyleSheet.create({
     fontSize: 20,
     letterSpacing: -0.4,
   },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  refreshBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(30,10,16,0.06)' },
   addBtn: {
     width: 34,
     height: 34,
