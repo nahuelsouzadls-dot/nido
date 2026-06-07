@@ -32,19 +32,24 @@ export function useObjetivos(options?: { scope?: Scope }) {
 
       const nuevo = await crearObjetivo({ ...objetivo, hogar_id: hogar.id });
 
-      // Objetivos personales son privados — no se registran en actividad
-      if (objetivo.scope !== 'personal') {
-        await registrarActividad({
-          hogar_id: hogar.id,
-          perfil_id: perfil.id,
-          tipo: 'objetivo_creado',
-          titulo: `${perfil.nombre} creó un objetivo`,
-          descripcion: objetivo.nombre,
-          metadata: { objetivo_id: nuevo.id, monto: objetivo.monto_objetivo },
-        });
-      }
+      // Optimistic: add immediately
+      setObjetivos((prev) => [nuevo, ...prev]);
 
-      await cargar();
+      // Background: activity, reconcile
+      (async () => {
+        if (objetivo.scope !== 'personal') {
+          await registrarActividad({
+            hogar_id: hogar.id,
+            perfil_id: perfil.id,
+            tipo: 'objetivo_creado',
+            titulo: `${perfil.nombre} creó un objetivo`,
+            descripcion: objetivo.nombre,
+            metadata: { objetivo_id: nuevo.id, monto: objetivo.monto_objetivo },
+          }).catch(() => {});
+        }
+        await cargar().catch(() => {});
+      })();
+
       return nuevo;
     },
     [hogar, perfil, cargar],

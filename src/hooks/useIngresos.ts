@@ -47,7 +47,9 @@ export function useIngresos(mes: number, anio: number) {
     async (ingreso: { monto: number; descripcion?: string | null; categoria?: string | null; fecha: string }) => {
       if (!hogar || !perfil) return;
       const nuevo = await crearIngreso({ ...ingreso, user_id: perfil.id, hogar_id: hogar.id });
-      await cargar();
+      // Optimistic: add immediately, reconcile in background
+      setIngresos((prev) => [nuevo, ...prev]);
+      cargar().catch(() => {});
       return nuevo;
     },
     [hogar, perfil, cargar],

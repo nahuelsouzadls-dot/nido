@@ -83,19 +83,24 @@ export function useFacturas(mes: number, anio: number, options?: { scope?: Scope
 
       const nueva = await crearFactura({ ...factura, hogar_id: hogar.id });
 
-      // Facturas personales son privadas — no se registran en actividad
-      if (factura.scope !== 'personal') {
-        await registrarActividad({
-          hogar_id: hogar.id,
-          perfil_id: perfil.id,
-          tipo: 'factura_creada',
-          titulo: `${perfil.nombre} creó una factura`,
-          descripcion: factura.nombre,
-          metadata: { factura_id: nueva.id },
-        });
-      }
+      // Optimistic: add immediately so the list reflects the new invoice before the background refetch
+      setFacturas((prev) => [...prev, { ...nueva, activa: true, pago_actual: undefined }]);
 
-      await cargar();
+      // Background: activity, reconcile
+      (async () => {
+        if (factura.scope !== 'personal') {
+          await registrarActividad({
+            hogar_id: hogar.id,
+            perfil_id: perfil.id,
+            tipo: 'factura_creada',
+            titulo: `${perfil.nombre} creó una factura`,
+            descripcion: factura.nombre,
+            metadata: { factura_id: nueva.id },
+          }).catch(() => {});
+        }
+        await cargar().catch(() => {});
+      })();
+
       return nueva;
     },
     [hogar, perfil, cargar],

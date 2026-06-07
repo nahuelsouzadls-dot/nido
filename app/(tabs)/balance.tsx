@@ -42,7 +42,11 @@ export default function BalanceScreen() {
 
   const refresh = async () => {
     setRefreshing(true);
-    await Promise.all([recargarGastos(), recargarFacturas()]);
+    await Promise.all([
+      recargarGastos(),
+      recargarFacturas(),
+      resumenPersonal.recargar(),
+    ]);
     setRefreshing(false);
   };
 

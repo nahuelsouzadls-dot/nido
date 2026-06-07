@@ -148,7 +148,9 @@ function CrearObjetivo() {
         </View>
 
         {scope === 'personal' && <PrivacyBadge />}
+      </ScrollView>
 
+      <View style={styles.saveBtnContainer}>
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: accentColor, opacity: loading ? 0.6 : 1 }]}
           onPress={handleGuardar}
@@ -159,7 +161,7 @@ function CrearObjetivo() {
             {loading ? 'Creando...' : scope === 'personal' ? 'Crear objetivo personal' : 'Crear objetivo'}
           </RNText>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -259,6 +261,9 @@ function AportarObjetivo({
           </View>
         </View>
 
+      </ScrollView>
+
+      <View style={styles.saveBtnContainer}>
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: colors.sage, opacity: loading ? 0.6 : 1 }]}
           onPress={handleAportar}
@@ -267,7 +272,7 @@ function AportarObjetivo({
         >
           <RNText style={styles.saveBtnText}>{loading ? 'Guardando...' : 'Confirmar aporte'}</RNText>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -304,7 +309,8 @@ const styles = StyleSheet.create({
   topTitle: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
   topSave: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
   scroll: { flex: 1 },
-  content: { padding: 16, gap: 14, paddingBottom: 60 },
+  content: { padding: 16, gap: 14, paddingBottom: 20 },
+  saveBtnContainer: { paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 20 },
 
   // Objetivo info (aportar mode)
   objetivoInfo: { borderRadius: 14, borderWidth: 0.5, padding: 16, gap: 10 },

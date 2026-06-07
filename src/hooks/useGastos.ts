@@ -67,26 +67,30 @@ export function useGastos(mes: number, anio: number, options?: { scope?: Scope }
 
       const nuevo = await crearGasto({ ...gasto, hogar_id: hogar.id });
 
-      // Gastos personales son privados — no se registran en actividad ni notifican al compañero
-      if (gasto.scope !== 'personal') {
-        await registrarActividad({
-          hogar_id: hogar.id,
-          perfil_id: perfil.id,
-          tipo: 'gasto_agregado',
-          titulo: `${perfil.nombre} registró un gasto`,
-          descripcion: `${gasto.descripcion} · $${gasto.monto.toLocaleString('es-UY')}`,
-          metadata: { gasto_id: nuevo.id, monto: gasto.monto },
-        });
+      // Optimistic: add immediately so the UI reflects the change before the background refetch
+      setGastos((prev) => [nuevo, ...prev]);
 
-        await notificarCompanero(
-          hogar.id,
-          perfil.id,
-          `${perfil.nombre} registró un gasto`,
-          `${gasto.descripcion} · $${gasto.monto.toLocaleString('es-UY')}`,
-        );
-      }
+      // Background: activity, notification, reconcile — don't block the return
+      (async () => {
+        if (gasto.scope !== 'personal') {
+          await registrarActividad({
+            hogar_id: hogar.id,
+            perfil_id: perfil.id,
+            tipo: 'gasto_agregado',
+            titulo: `${perfil.nombre} registró un gasto`,
+            descripcion: `${gasto.descripcion} · $${gasto.monto.toLocaleString('es-UY')}`,
+            metadata: { gasto_id: nuevo.id, monto: gasto.monto },
+          }).catch(() => {});
+          await notificarCompanero(
+            hogar.id,
+            perfil.id,
+            `${perfil.nombre} registró un gasto`,
+            `${gasto.descripcion} · $${gasto.monto.toLocaleString('es-UY')}`,
+          ).catch(() => {});
+        }
+        await cargar().catch(() => {});
+      })();
 
-      await cargar();
       return nuevo;
     },
     [hogar, perfil, cargar],

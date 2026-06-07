@@ -144,8 +144,9 @@ export default function ModalIngreso() {
         </RNText>
 
         <PrivacyBadge />
+      </ScrollView>
 
-        {/* Save button */}
+      <View style={styles.saveBtnContainer}>
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: colors.personal, opacity: loading || !isValid ? 0.5 : 1 }]}
           onPress={handleGuardar}
@@ -154,7 +155,7 @@ export default function ModalIngreso() {
         >
           <RNText style={styles.saveBtnText}>{loading ? 'Guardando...' : 'Registrar ingreso'}</RNText>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -164,7 +165,8 @@ const styles = StyleSheet.create({
   topTitle: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
   topSave: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
   scroll: { flex: 1 },
-  content: { padding: 16, gap: 14, paddingBottom: 60 },
+  content: { padding: 16, gap: 14, paddingBottom: 20 },
+  saveBtnContainer: { paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 20 },
   montoCard: { borderRadius: 14, borderWidth: 0.5, padding: 16, alignItems: 'center', gap: 8 },
   montoHint: { fontFamily: 'Manrope_700Bold', fontSize: 9, letterSpacing: 0.5 },
   montoRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },

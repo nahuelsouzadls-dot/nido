@@ -241,8 +241,10 @@ export default function ModalFactura() {
         )}
 
         {scope === 'personal' && <PrivacyBadge />}
+      </ScrollView>
 
-        {/* Save button */}
+      {/* Save button outside ScrollView — always reachable regardless of keyboard */}
+      <View style={styles.saveBtnContainer}>
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: accentColor, opacity: loading ? 0.6 : 1 }]}
           onPress={handleGuardar}
@@ -253,7 +255,7 @@ export default function ModalFactura() {
             {loading ? 'Guardando...' : scope === 'personal' ? 'Guardar factura personal' : 'Guardar factura'}
           </RNText>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -282,6 +284,7 @@ const styles = StyleSheet.create({
   pagador: { flex: 1, alignItems: 'center', gap: 6, padding: 12, borderRadius: 14, borderWidth: 0.5 },
   anyIcon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   pagadorNombre: { fontFamily: 'Manrope_600SemiBold', fontSize: 10 },
-  saveBtn: { borderRadius: 13, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  saveBtnContainer: { paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 20 },
+  saveBtn: { borderRadius: 13, paddingVertical: 14, alignItems: 'center' },
   saveBtnText: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: '#fff' },
 });

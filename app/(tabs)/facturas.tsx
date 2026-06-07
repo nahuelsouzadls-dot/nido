@@ -6,10 +6,6 @@ import {
   RefreshControl,
   TouchableOpacity,
   Alert,
-  Modal,
-  TextInput,
-  Platform,
-  KeyboardAvoidingView,
   Text as RNText,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -38,8 +34,6 @@ export default function FacturasScreen() {
   const { facturas, pagar, eliminar, recargar, todasPagadas } = useFacturas(mes, anio, { scope: activeContext });
   const [filtro, setFiltro] = useState<Filtro>('todas');
   const [refreshing, setRefreshing] = useState(false);
-  const [modalPago, setModalPago] = useState<{ id: string; nombre: string } | null>(null);
-  const [montoPago, setMontoPago] = useState('');
 
   const refresh = async () => {
     setRefreshing(true);
@@ -53,57 +47,8 @@ export default function FacturasScreen() {
     return true;
   });
 
-  const handlePagar = (facturaId: string, nombre: string, montoPredeterminado?: number | null) => {
-    if (montoPredeterminado) {
-      Alert.alert(`Pagar ${nombre}`, `¿Confirmar pago de $${montoPredeterminado.toLocaleString('es-UY')}?`, [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          onPress: () => {
-            pagar(facturaId, montoPredeterminado).catch(() => {
-              Alert.alert('Error al pagar', 'No se pudo registrar el pago. Intentá de nuevo.');
-            });
-          },
-        },
-      ]);
-    } else if (Platform.OS === 'ios') {
-      Alert.prompt(
-        `Pagar ${nombre}`,
-        'Ingresá el monto pagado',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Pagar',
-            onPress: (monto: string | undefined) => {
-              const m = parseFloat(monto?.replace(',', '.') ?? '0');
-              if (m > 0) {
-                pagar(facturaId, m).catch(() => {
-                  Alert.alert('Error al pagar', 'No se pudo registrar el pago. Intentá de nuevo.');
-                });
-              }
-            },
-          },
-        ],
-        'plain-text',
-        '',
-        'numeric',
-      );
-    } else {
-      setMontoPago('');
-      setModalPago({ id: facturaId, nombre });
-    }
-  };
-
-  const confirmarPagoModal = () => {
-    if (!modalPago) return;
-    const m = parseFloat(montoPago.replace(',', '.'));
-    if (isNaN(m) || m <= 0) {
-      Alert.alert('Monto inválido', 'Ingresá un monto mayor a cero.');
-      return;
-    }
-    const { id } = modalPago;
-    setModalPago(null);
-    pagar(id, m).catch(() => {
+  const handlePagar = (facturaId: string, monto?: number | null) => {
+    pagar(facturaId, monto ?? undefined).catch(() => {
       Alert.alert('Error al pagar', 'No se pudo registrar el pago. Intentá de nuevo.');
     });
   };
@@ -223,7 +168,7 @@ export default function FacturasScreen() {
               key={factura.id}
               factura={factura}
               accentColor={isPersonal ? colors.personal : undefined}
-              onPagar={() => handlePagar(factura.id, factura.nombre, factura.monto)}
+              onPagar={() => handlePagar(factura.id, factura.monto)}
               onPress={() =>
                 Alert.alert(factura.nombre, undefined, [
                   { text: 'Eliminar', style: 'destructive', onPress: () => handleEliminar(factura.id, factura.nombre) },
@@ -237,47 +182,6 @@ export default function FacturasScreen() {
       </ScrollView>
 
       {/* Payment modal for Android */}
-      <Modal
-        visible={modalPago !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setModalPago(null)}
-      >
-        <KeyboardAvoidingView style={styles.modalOverlay} behavior="padding">
-          <View style={[styles.modalBox, { backgroundColor: '#fff' }]}>
-            <RNText style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              Pagar {modalPago?.nombre}
-            </RNText>
-            <RNText style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-              Ingresá el monto pagado
-            </RNText>
-            <TextInput
-              style={[styles.modalInput, { backgroundColor: colors.background, borderColor: colors.borderSubtle, color: colors.textPrimary }]}
-              placeholder="0"
-              placeholderTextColor={colors.textSecondary}
-              keyboardType="numeric"
-              value={montoPago}
-              onChangeText={setMontoPago}
-              autoFocus
-            />
-            <View style={styles.modalBtns}>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: 'rgba(30,10,16,0.07)' }]}
-                onPress={() => setModalPago(null)}
-              >
-                <RNText style={[styles.modalBtnText, { color: colors.textSecondary }]}>Cancelar</RNText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
-                onPress={confirmarPagoModal}
-              >
-                <RNText style={[styles.modalBtnText, { color: '#fff' }]}>Pagar</RNText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
       <FAB />
     </SafeAreaView>
   );
@@ -312,13 +216,4 @@ const styles = StyleSheet.create({
   emptyBtn: { borderRadius: 13, paddingVertical: 12, paddingHorizontal: 24, marginTop: 8 },
   emptyBtnText: { fontFamily: 'Manrope_700Bold', fontSize: 12, color: '#fff' },
 
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  modalBox: { borderRadius: 20, padding: 24, width: '100%' },
-  modalTitle: { fontFamily: 'Manrope_700Bold', fontSize: 15, marginBottom: 4 },
-  modalSubtitle: { fontFamily: 'Manrope_500Medium', fontSize: 11, marginBottom: 16 },
-  modalInput: { borderWidth: 0.5, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 11, fontFamily: 'Manrope_800ExtraBold', fontSize: 22, marginBottom: 16 },
-  modalBtns: { flexDirection: 'row', gap: 10 },
-  modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 13, alignItems: 'center' },
-  modalBtnText: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
 });

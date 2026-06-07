@@ -90,7 +90,7 @@ export default function HomeScreen() {
 
   const refresh = async () => {
     setRefreshing(true);
-    await recargar();
+    await Promise.all([recargar(), resumenPersonal.recargar()]);
     setRefreshing(false);
   };
 

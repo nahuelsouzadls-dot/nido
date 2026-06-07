@@ -293,8 +293,9 @@ export default function ModalGasto() {
         </TouchableOpacity>
 
         {scope === 'personal' && <PrivacyBadge />}
+      </ScrollView>
 
-        {/* Save button */}
+      <View style={styles.saveBtnContainer}>
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: accentColor, opacity: loading ? 0.6 : 1 }]}
           onPress={handleGuardar}
@@ -305,7 +306,7 @@ export default function ModalGasto() {
             {loading ? 'Guardando...' : scope === 'personal' ? 'Registrar gasto personal' : 'Registrar gasto del hogar'}
           </RNText>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -315,7 +316,8 @@ const styles = StyleSheet.create({
   topTitle: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
   topSave: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
   scroll: { flex: 1 },
-  content: { padding: 16, gap: 14, paddingBottom: 60 },
+  content: { padding: 16, gap: 14, paddingBottom: 20 },
+  saveBtnContainer: { paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 20 },
   montoCard: { borderRadius: 14, borderWidth: 0.5, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   montoSign: { fontFamily: 'Manrope_700Bold', fontSize: 20 },
   montoInput: { fontFamily: 'Manrope_800ExtraBold', fontSize: 34, letterSpacing: -1, textAlign: 'center', minWidth: 80 },
