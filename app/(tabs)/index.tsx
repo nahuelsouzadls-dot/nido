@@ -127,7 +127,7 @@ export default function HomeScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={activeContext === 'personal' ? colors.personal : colors.primary} />}
       >
         {/* Header */}
         <View style={styles.headerRow}>

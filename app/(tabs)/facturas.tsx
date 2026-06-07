@@ -127,7 +127,7 @@ export default function FacturasScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={isPersonal ? colors.personal : colors.primary} />}
       >
         {facturasVisibles.length === 0 ? (
           <View style={styles.emptyContainer}>
