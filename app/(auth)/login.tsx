@@ -114,8 +114,8 @@ export default function LoginScreen() {
             </RNText>
             <RNText style={[styles.pageSubtitle, { color: colors.textSecondary }]}>
               {esRegistro
-                ? 'Así te verá tu compañero/a en el hogar'
-                : 'Ingresá para ver cómo va tu hogar'}
+                ? 'Así aparecerás en tu perfil'
+                : 'Ingresá para ver cómo va el hogar'}
             </RNText>
           </View>
 

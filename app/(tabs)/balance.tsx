@@ -93,20 +93,7 @@ export default function BalanceScreen() {
         )}
       </View>
 
-      {/* Sin compañero — solo en modo hogar */}
-      {!isPersonal && !companero ? (
-        <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIcon, { backgroundColor: 'rgba(107,45,62,0.08)' }]}>
-            <MaterialCommunityIcons name="account-plus-outline" size={26} color={colors.primary} />
-          </View>
-          <RNText style={[styles.emptyTitle, { color: colors.textPrimary }]}>
-            Esperando a tu compañero/a
-          </RNText>
-          <RNText style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-            Invitá a alguien a unirse al hogar para ver el balance compartido
-          </RNText>
-        </View>
-      ) : isPersonal ? (
+      {isPersonal ? (
         /* Modo personal */
         <ScrollView
           style={styles.scroll}

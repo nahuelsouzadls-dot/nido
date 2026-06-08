@@ -131,20 +131,37 @@ export default function PerfilScreen() {
               </RNText>
             ) : null}
 
-            {/* Avatares superpuestos */}
+            {/* Avatares */}
             <View style={styles.hogarAvatares}>
               <Avatar nombre={perfil.nombre} url={perfil.avatar_url} size={28} color={colors.primaryLight} />
               {companero ? (
                 <View style={styles.hogarAvatarOverlap}>
                   <Avatar nombre={companero.nombre} url={companero.avatar_url} size={28} color={colors.primaryLight} />
                 </View>
-              ) : null}
+              ) : (
+                <View style={[styles.hogarAvatarOverlap, styles.slotVacio]}>
+                  <MaterialCommunityIcons name="plus" size={13} color={colors.textSecondary} />
+                </View>
+              )}
             </View>
+
             {companero ? (
               <RNText style={[styles.hogarMiembros, { color: colors.textSecondary }]}>
                 {perfil.nombre.split(' ')[0]} · {companero.nombre.split(' ')[0]}
               </RNText>
-            ) : null}
+            ) : (
+              <>
+                <RNText style={[styles.hogarMiembros, { color: colors.textSecondary }]}>
+                  Solo vos por ahora
+                </RNText>
+                <TouchableOpacity
+                  onPress={() => Share.share({ message: hogar.id, title: 'Código del hogar Nido' })}
+                  activeOpacity={0.7}
+                >
+                  <RNText style={[styles.invitarLink, { color: colors.primary }]}>Invitar a alguien →</RNText>
+                </TouchableOpacity>
+              </>
+            )}
 
             {/* Compartir código */}
             <View style={styles.compartirRow}>
@@ -214,7 +231,19 @@ const styles = StyleSheet.create({
   hogarDesde: { fontFamily: 'Manrope_500Medium', fontSize: 9 },
   hogarAvatares: { flexDirection: 'row', marginTop: 4 },
   hogarAvatarOverlap: { marginLeft: -6 },
+  slotVacio: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(107,45,62,0.3)',
+    backgroundColor: 'rgba(107,45,62,0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   hogarMiembros: { fontFamily: 'Manrope_500Medium', fontSize: 10 },
+  invitarLink: { fontFamily: 'Manrope_700Bold', fontSize: 10 },
   compartirRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   codigoText: { fontFamily: 'Manrope_500Medium', fontSize: 9, flex: 1 },
   compartirBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },

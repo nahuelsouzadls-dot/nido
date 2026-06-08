@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -9,6 +9,7 @@ import {
   Platform,
   Text as RNText,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -48,6 +49,37 @@ const HERO_COLORS: Record<HeroState, {
 const HERO_BADGE: Record<HeroState, string> = {
   calm: 'Todo al día', warn: 'Atención', urgent: 'Vence hoy',
 };
+
+// ─── BienvenidaCard ───────────────────────────────────────────────────────────
+
+function BienvenidaCard({ onDismiss }: { onDismiss: () => void }) {
+  const colors = useColors();
+  return (
+    <View style={[bStyles.card, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
+      <RNText style={[bStyles.label, { color: colors.textSecondary }]}>BIENVENIDO/A A NIDO</RNText>
+      <RNText style={[bStyles.titulo, { color: colors.textPrimary }]}>Tu espacio está listo</RNText>
+      <RNText style={[bStyles.texto, { color: colors.textSecondary }]}>
+        Registrá tu primer ingreso o gasto. Todo lo que guardés acá es solo tuyo.
+      </RNText>
+      <TouchableOpacity
+        style={[bStyles.btn, { backgroundColor: 'rgba(30,10,16,0.07)' }]}
+        onPress={onDismiss}
+        activeOpacity={0.7}
+      >
+        <RNText style={[bStyles.btnText, { color: colors.textSecondary }]}>Entendido</RNText>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const bStyles = StyleSheet.create({
+  card: { borderRadius: 14, borderWidth: 0.5, padding: 14, gap: 6 },
+  label: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
+  titulo: { fontFamily: 'Manrope_800ExtraBold', fontSize: 13, letterSpacing: -0.3 },
+  texto: { fontFamily: 'Manrope_500Medium', fontSize: 10, lineHeight: 16 },
+  btn: { borderRadius: 10, paddingVertical: 8, alignItems: 'center', marginTop: 4 },
+  btnText: { fontFamily: 'Manrope_700Bold', fontSize: 10 },
+});
 
 // ─── BillRow ──────────────────────────────────────────────────────────────────
 
@@ -89,6 +121,16 @@ export default function HomeScreen() {
   const { facturas, pendientes, vencidas, recargar } = useFacturas(mes, anio);
   const resumenPersonal = useResumenPersonal(mes, anio);
   const [refreshing, setRefreshing] = useState(false);
+  const [mostrarBienvenida, setMostrarBienvenida] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem('nido_first_home_visit').then((val) => {
+      if (val === null) {
+        setMostrarBienvenida(true);
+        AsyncStorage.setItem('nido_first_home_visit', 'done');
+      }
+    });
+  }, []);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -155,6 +197,10 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
+
+        {mostrarBienvenida && (
+          <BienvenidaCard onDismiss={() => setMostrarBienvenida(false)} />
+        )}
 
         <ContextSelectorBar />
 
