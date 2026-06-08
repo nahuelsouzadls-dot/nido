@@ -27,6 +27,13 @@ export default function LoginScreen() {
   const [passFocused, setPassFocused] = useState(false);
   const [nombreFocused, setNombreFocused] = useState(false);
 
+  const getRedirectUrl = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      return `${window.location.origin}/auth/callback`;
+    }
+    return 'nido://auth/callback';
+  };
+
   const handleSubmit = async () => {
     setError('');
     setLoading(true);
@@ -35,7 +42,10 @@ export default function LoginScreen() {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
-          options: { data: { nombre: nombre.trim() } },
+          options: {
+            data: { nombre: nombre.trim() },
+            emailRedirectTo: getRedirectUrl(),
+          },
         });
         if (signUpError) throw signUpError;
         if (data.user && !data.session) {
