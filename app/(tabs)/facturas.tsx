@@ -37,7 +37,7 @@ export default function FacturasScreen() {
   const mes = hoy.getMonth() + 1;
   const anio = hoy.getFullYear();
 
-  const { facturas, pagar, eliminar, recargar, todasPagadas } = useFacturas(mes, anio, { scope: activeContext });
+  const { facturas, pagar, despagar, eliminar, recargar, todasPagadas } = useFacturas(mes, anio, { scope: activeContext });
 
   const puedeModificar = (factura: { scope: string; creado_por: string | null }) => {
     if (factura.scope === 'personal') return factura.creado_por === perfil?.id;
@@ -71,6 +71,7 @@ export default function FacturasScreen() {
             monto: montoPersonal,
             descripcion: `Factura · ${factura.nombre}`,
             fecha: new Date().toISOString().split('T')[0],
+            observaciones: `factura_ref:${factura.id}`,
             scope: 'personal',
           });
         }
@@ -109,6 +110,22 @@ export default function FacturasScreen() {
         { text: 'Lo dividí', onPress: () => ejecutarPago(monto / 2) },
         { text: 'Solo cambiar estado', onPress: () => ejecutarPago() },
         { text: 'Cancelar', style: 'cancel' },
+      ],
+    );
+  };
+
+  const handleDespagar = (facturaId: string, nombre: string) => {
+    if (Platform.OS === 'web') {
+      if (!window.confirm(`¿Marcar "${nombre}" como pendiente? Si tenías un gasto personal asociado también se eliminará.`)) return;
+      despagar(facturaId).catch(() => Alert.alert('Error', 'No se pudo actualizar el estado.'));
+      return;
+    }
+    Alert.alert(
+      'Marcar como pendiente',
+      `La factura "${nombre}" volverá a estar pendiente. Si registraste un impacto en tu balance personal, también se eliminará.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Marcar como pendiente', onPress: () => despagar(facturaId).catch(() => Alert.alert('Error', 'No se pudo actualizar el estado.')) },
       ],
     );
   };
@@ -257,6 +274,7 @@ export default function FacturasScreen() {
               factura={factura}
               accentColor={isPersonal ? colors.personal : undefined}
               onPagar={() => handlePagar(factura)}
+              onDespagar={factura.pago_actual?.estado === 'pagada' ? () => handleDespagar(factura.id, factura.nombre) : undefined}
               onEditar={puedeModificar(factura) ? () => handleEditar(factura) : undefined}
               onEliminar={puedeModificar(factura) ? () => handleEliminar(factura.id, factura.nombre) : undefined}
             />

@@ -99,6 +99,16 @@ export async function actualizarFactura(
   if (error) throw error;
 }
 
+export async function resetearPagoFactura(facturaId: string, mes: number, anio: number) {
+  const { error } = await supabase
+    .from('facturas_pagos')
+    .delete()
+    .eq('factura_id', facturaId)
+    .eq('mes', mes)
+    .eq('anio', anio);
+  if (error) throw error;
+}
+
 export async function eliminarFactura(id: string) {
   const { error } = await supabase.from('facturas').update({ activa: false }).eq('id', id);
   if (error) throw error;

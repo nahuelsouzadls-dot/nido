@@ -4,9 +4,11 @@ import {
   crearFactura,
   actualizarFactura,
   pagarFactura,
+  resetearPagoFactura,
   eliminarFactura,
   actualizarVencidas,
 } from '@/services/facturas';
+import { eliminarGastoFacturaRef } from '@/services/gastos';
 import { registrarActividad } from '@/services/actividad';
 import { notificarCompanero } from '@/services/notificaciones';
 import { supabase } from '@/lib/supabase';
@@ -180,6 +182,25 @@ export function useFacturas(mes: number, anio: number, options?: { scope?: Scope
     [hogar, perfil, facturas, mes, anio, cargar],
   );
 
+  const despagar = useCallback(
+    async (facturaId: string) => {
+      setFacturas((prev) =>
+        prev.map((f) => (f.id === facturaId ? { ...f, pago_actual: undefined } : f)),
+      );
+      try {
+        await resetearPagoFactura(facturaId, mes, anio);
+        // Elimina el gasto personal vinculado al pago si existía
+        if (hogar && perfil) {
+          await eliminarGastoFacturaRef(hogar.id, perfil.id, facturaId).catch(() => {});
+        }
+      } catch (e) {
+        await cargar().catch(() => {});
+        throw e;
+      }
+    },
+    [mes, anio, hogar, perfil, cargar],
+  );
+
   const editar = useCallback(
     async (
       id: string,
@@ -216,5 +237,5 @@ export function useFacturas(mes: number, anio: number, options?: { scope?: Scope
   const vencidas = facturas.filter((f) => f.pago_actual?.estado === 'vencida');
   const todasPagadas = facturas.length > 0 && pendientes.length === 0 && vencidas.length === 0;
 
-  return { facturas, loading, crear, editar, pagar, eliminar, recargar: cargar, pendientes, pagadas, vencidas, todasPagadas };
+  return { facturas, loading, crear, editar, pagar, despagar, eliminar, recargar: cargar, pendientes, pagadas, vencidas, todasPagadas };
 }

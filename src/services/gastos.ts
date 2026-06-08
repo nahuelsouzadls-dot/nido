@@ -53,6 +53,17 @@ export async function eliminarGasto(id: string) {
   if (error) throw error;
 }
 
+export async function eliminarGastoFacturaRef(hogarId: string, userId: string, facturaId: string) {
+  const { error } = await supabase
+    .from('gastos')
+    .delete()
+    .eq('hogar_id', hogarId)
+    .eq('pagado_por', userId)
+    .eq('scope', 'personal')
+    .eq('observaciones', `factura_ref:${facturaId}`);
+  if (error) throw error;
+}
+
 export async function adjuntarFotoGasto(gastoId: string, uri: string) {
   const fileName = `gasto_${gastoId}_${Date.now()}.jpg`;
   const path = `gastos/${fileName}`;

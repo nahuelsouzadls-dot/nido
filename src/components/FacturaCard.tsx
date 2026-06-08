@@ -9,6 +9,7 @@ import type { Factura } from '@/types';
 type Props = {
   factura: Factura;
   onPagar: () => void;
+  onDespagar?: () => void;
   onEditar?: () => void;
   onEliminar?: () => void;
   accentColor?: string;
@@ -23,12 +24,12 @@ function getVencimientoLabel(dia: number): string {
   return `Vence el día ${dia}`;
 }
 
-export function FacturaCard({ factura, onPagar, onEditar, onEliminar, accentColor }: Props) {
+export function FacturaCard({ factura, onPagar, onDespagar, onEditar, onEliminar, accentColor }: Props) {
   const colors = useColors();
   const accent = accentColor ?? colors.primary;
   const esPagada = factura.pago_actual?.estado === 'pagada';
   const esVencida = factura.pago_actual?.estado === 'vencida';
-  const tieneMenu = !!(onEditar || onEliminar);
+  const tieneMenu = !!(onDespagar || onEditar || onEliminar);
 
   const handlePagar = () => {
     if (esPagada) return;
@@ -38,21 +39,15 @@ export function FacturaCard({ factura, onPagar, onEditar, onEliminar, accentColo
 
   const showMenu = () => {
     const opciones: { text: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void }[] = [];
+    if (onDespagar) opciones.push({ text: 'Marcar como pendiente', onPress: onDespagar });
     if (onEditar) opciones.push({ text: 'Editar', onPress: onEditar });
     if (onEliminar) opciones.push({ text: 'Eliminar', style: 'destructive', onPress: onEliminar });
     opciones.push({ text: 'Cancelar', style: 'cancel' });
 
     if (Platform.OS === 'web') {
-      // En web mostramos las acciones disponibles vía window.confirm / navegación directa
-      if (onEditar && onEliminar) {
-        const accion = window.confirm(`${factura.nombre}\n\nPresioná OK para editar o Cancelar para ver más opciones.`);
-        if (accion) { onEditar(); return; }
-        if (window.confirm('¿Eliminar esta factura? Esta acción no se puede deshacer.')) onEliminar();
-      } else if (onEditar) {
-        onEditar();
-      } else if (onEliminar) {
-        if (window.confirm(`¿Eliminar "${factura.nombre}"? Esta acción no se puede deshacer.`)) onEliminar();
-      }
+      if (onDespagar && window.confirm(`¿Marcar "${factura.nombre}" como pendiente?`)) { onDespagar(); return; }
+      if (!onDespagar && onEditar && window.confirm(`${factura.nombre}: ¿Editar? (Cancelar = Eliminar)`)) { onEditar(); return; }
+      if (!onDespagar && onEliminar && window.confirm(`¿Eliminar "${factura.nombre}"? Esta acción no se puede deshacer.`)) onEliminar();
       return;
     }
 
