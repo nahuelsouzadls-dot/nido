@@ -13,18 +13,6 @@ type Props = {
 };
 
 function getIconName(icono: string): keyof typeof MaterialCommunityIcons.glyphMap {
-  // Handle both new MCIcons names and legacy emoji strings
-  const LEGACY_MAP: Record<string, keyof typeof MaterialCommunityIcons.glyphMap> = {
-    '🛒': 'cart-outline',
-    '🏠': 'home-outline',
-    '💡': 'lightning-bolt',
-    '🚗': 'car-outline',
-    '🐾': 'paw-outline',
-    '🍽️': 'silverware-fork-knife',
-    '💊': 'medical-bag',
-    '📦': 'dots-horizontal',
-  };
-  if (LEGACY_MAP[icono]) return LEGACY_MAP[icono];
   return (icono as keyof typeof MaterialCommunityIcons.glyphMap) || 'dots-horizontal';
 }
 

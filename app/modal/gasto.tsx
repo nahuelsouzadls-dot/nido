@@ -34,12 +34,7 @@ function parseMonto(raw: string): number {
 }
 
 function getCatIcon(icono: string): keyof typeof MaterialCommunityIcons.glyphMap {
-  const MAP: Record<string, keyof typeof MaterialCommunityIcons.glyphMap> = {
-    '🛒': 'cart-outline', '🏠': 'home-outline', '💡': 'lightning-bolt',
-    '🚗': 'car-outline', '🐾': 'paw-outline', '🍽️': 'silverware-fork-knife',
-    '💊': 'medical-bag', '📦': 'dots-horizontal',
-  };
-  return MAP[icono] ?? (icono as keyof typeof MaterialCommunityIcons.glyphMap) ?? 'dots-horizontal';
+  return (icono as keyof typeof MaterialCommunityIcons.glyphMap) ?? 'dots-horizontal';
 }
 
 export default function ModalGasto() {
