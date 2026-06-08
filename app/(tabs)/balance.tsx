@@ -23,7 +23,10 @@ import { PrivacyBadge } from '@/components/ui/PrivacyBadge';
 import { DisponibleHeroCard } from '@/components/DisponibleHeroCard';
 import { MiniStatCard } from '@/components/MiniStatCard';
 import { MovimientoRow } from '@/components/MovimientoRow';
+import { Avatar } from '@/components/ui/Avatar';
+import { useBalance } from '@/hooks/useBalance';
 import { formatMonto, formatMes } from '@/utils/format';
+import type { FacturaPago } from '@/types';
 
 export default function BalanceScreen() {
   const { perfil, companero } = useAuthStore();
@@ -38,6 +41,13 @@ export default function BalanceScreen() {
   const { facturas, loading: loadingFacturas, recargar: recargarFacturas, pendientes } = useFacturas(mes, anio);
   const resumenPersonal = useResumenPersonal(mes, anio);
   const { movimientos } = useMovimientosPersonales(mes, anio);
+
+  // Pagos de facturas del hogar con monto y pagador definidos — input para useBalance
+  const facturasPagadasBalance = facturas
+    .map((f) => f.pago_actual)
+    .filter((p): p is FacturaPago => p != null && p.estado === 'pagada' && p.pagado_por != null && p.monto != null);
+
+  const balance = useBalance(gastos, facturasPagadasBalance);
   const loading = loadingGastos || loadingFacturas;
 
   const [refreshing, setRefreshing] = useState(false);
@@ -195,6 +205,40 @@ export default function BalanceScreen() {
           )}
         </View>
 
+        {/* Breakdown por integrante — solo cuando hay compañero y datos */}
+        {balance && companero && perfil && balance.totalMes > 0 && (
+          <View style={[styles.breakdownCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
+            <RNText style={[styles.breakdownLabel, { color: colors.textSecondary }]}>QUIÉN PUSO QUÉ</RNText>
+            <View style={styles.breakdownRow}>
+              <Avatar nombre={perfil.nombre} url={perfil.avatar_url} size={24} color={colors.primaryLight} />
+              <RNText style={[styles.breakdownNombre, { color: colors.textPrimary }]}>
+                {perfil.nombre.split(' ')[0]}
+              </RNText>
+              <RNText style={[styles.breakdownMonto, { color: colors.textPrimary }]}>
+                {formatMonto(balance.montoA)}
+              </RNText>
+            </View>
+            <View style={[styles.breakdownSep, { backgroundColor: colors.borderSubtle }]} />
+            <View style={styles.breakdownRow}>
+              <Avatar nombre={companero.nombre} url={companero.avatar_url} size={24} color={colors.primaryLight} />
+              <RNText style={[styles.breakdownNombre, { color: colors.textPrimary }]}>
+                {companero.nombre.split(' ')[0]}
+              </RNText>
+              <RNText style={[styles.breakdownMonto, { color: colors.textPrimary }]}>
+                {formatMonto(balance.montoB)}
+              </RNText>
+            </View>
+            {balance.montoDebe > 0.5 && balance.deudor && balance.acreedor && (
+              <View style={[styles.deudaBox, { backgroundColor: 'rgba(107,45,62,0.06)', borderColor: 'rgba(107,45,62,0.12)' }]}>
+                <RNText style={[styles.deudaText, { color: colors.primary }]}>
+                  {balance.deudor === perfil.id ? 'Vos le debés' : `${companero.nombre.split(' ')[0]} te debe`}
+                  {' '}{formatMonto(balance.montoDebe)}
+                </RNText>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Monthly progress */}
         {totalFacturas > 0 && (
           <View style={styles.progressSection}>
@@ -305,6 +349,16 @@ const styles = StyleSheet.create({
   heroTotal: { fontFamily: 'Manrope_800ExtraBold', fontSize: 22, letterSpacing: -0.8 },
   heroBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   heroBadgeText: { fontFamily: 'Manrope_700Bold', fontSize: 9 },
+
+  // Breakdown
+  breakdownCard: { borderRadius: 14, borderWidth: 0.5, padding: 12, gap: 10 },
+  breakdownLabel: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
+  breakdownRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  breakdownNombre: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, flex: 1 },
+  breakdownMonto: { fontFamily: 'Manrope_700Bold', fontSize: 13, letterSpacing: -0.3 },
+  breakdownSep: { height: 0.5 },
+  deudaBox: { borderRadius: 10, borderWidth: 0.5, paddingHorizontal: 10, paddingVertical: 7 },
+  deudaText: { fontFamily: 'Manrope_700Bold', fontSize: 10, textAlign: 'center' },
 
   // Progress
   progressSection: { gap: 8 },
