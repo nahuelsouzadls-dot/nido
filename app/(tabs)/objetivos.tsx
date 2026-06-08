@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Alert,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +17,7 @@ import { Text } from '@/components/ui/Text';
 import { ObjetivoCard } from '@/components/ObjetivoCard';
 import { ContextSelectorBar } from '@/components/ui/ContextSelectorBar';
 import { useObjetivos } from '@/hooks/useObjetivos';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { formatMes } from '@/utils/format';
 
 export default function ObjetivosScreen() {
@@ -30,6 +30,7 @@ export default function ObjetivosScreen() {
   const hoy = new Date();
   const { objetivos, recargar, eliminar } = useObjetivos({ scope: activeContext });
   const [refreshing, setRefreshing] = useState(false);
+  const [dialog, setDialog] = useState<{ id: string; nombre: string } | null>(null);
 
   const activos = objetivos.filter((o) => !o.completado);
   const completados = objetivos.filter((o) => o.completado);
@@ -41,19 +42,7 @@ export default function ObjetivosScreen() {
   };
 
   const handleEliminar = (id: string, nombre: string) => {
-    if (Platform.OS === 'web') {
-      if (!window.confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
-      eliminar(id);
-    } else {
-      Alert.alert(
-        `Eliminar objetivo`,
-        `¿Querés eliminar "${nombre}"? Esta acción no se puede deshacer.`,
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Eliminar', style: 'destructive', onPress: () => eliminar(id) },
-        ],
-      );
-    }
+    setDialog({ id, nombre });
   };
 
   return (
@@ -176,6 +165,18 @@ export default function ObjetivosScreen() {
           </>
         )}
       </ScrollView>
+
+      {dialog && (
+        <ConfirmDialog
+          visible
+          titulo="Eliminar objetivo"
+          descripcion={`"${dialog.nombre}" se eliminará permanentemente. Esta acción no se puede deshacer.`}
+          ctaPrimaria="Eliminar"
+          destructivo
+          onConfirmar={() => { setDialog(null); eliminar(dialog.id); }}
+          onCancelar={() => setDialog(null)}
+        />
+      )}
     </SafeAreaView>
   );
 }

@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  Alert,
   Text as RNText,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,13 +18,24 @@ import { FacturaCard } from '@/components/FacturaCard';
 import { FAB } from '@/components/FAB';
 import { ContextSelectorBar } from '@/components/ui/ContextSelectorBar';
 import { PrivacyBadge } from '@/components/ui/PrivacyBadge';
+import { ActionSheet, type AccionItem } from '@/components/ui/ActionSheet';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Toast } from '@/components/ui/Toast';
 import { useFacturas } from '@/hooks/useFacturas';
 import { useAuthStore } from '@/store/auth';
 import { crearGasto } from '@/services/gastos';
-import { formatMes } from '@/utils/format';
+import { formatMes, formatMonto } from '@/utils/format';
 import type { Factura } from '@/types';
 
 type Filtro = 'todas' | 'pendientes' | 'pagadas';
+
+type DialogState = {
+  titulo: string;
+  descripcion?: string;
+  ctaPrimaria: string;
+  destructivo?: boolean;
+  onConfirmar: () => void;
+};
 
 export default function FacturasScreen() {
   const router = useRouter();
@@ -39,12 +49,19 @@ export default function FacturasScreen() {
 
   const { facturas, pagar, despagar, eliminar, recargar, todasPagadas } = useFacturas(mes, anio, { scope: activeContext });
 
+  const [filtro, setFiltro] = useState<Filtro>('todas');
+  const [refreshing, setRefreshing] = useState(false);
+  const [pagoSheet, setPagoSheet] = useState<{ visible: boolean; factura: Factura | null }>({ visible: false, factura: null });
+  const [dialog, setDialog] = useState<DialogState | null>(null);
+  const [toast, setToast] = useState<{ visible: boolean; mensaje: string; tipo?: 'success' | 'error' }>({ visible: false, mensaje: '' });
+
+  const mostrarToast = (mensaje: string, tipo: 'success' | 'error' = 'success') =>
+    setToast({ visible: true, mensaje, tipo });
+
   const puedeModificar = (factura: { scope: string; creado_por: string | null }) => {
     if (factura.scope === 'personal') return factura.creado_por === perfil?.id;
     return true;
   };
-  const [filtro, setFiltro] = useState<Filtro>('todas');
-  const [refreshing, setRefreshing] = useState(false);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -58,89 +75,79 @@ export default function FacturasScreen() {
     return true;
   });
 
-  const handlePagar = (factura: Factura) => {
-    const ejecutarPago = async (montoPersonal?: number) => {
+  // ── Pago ──────────────────────────────────────────────────────────────────
+
+  const ejecutarPago = async (factura: Factura, montoPersonal?: number) => {
+    try {
+      await pagar(factura.id, factura.monto ?? undefined);
+    } catch {
+      mostrarToast('No se pudo registrar el pago', 'error');
+      return;
+    }
+    if (montoPersonal && montoPersonal > 0 && hogar && perfil) {
       try {
-        await pagar(factura.id, factura.monto ?? undefined);
-        if (montoPersonal && montoPersonal > 0 && hogar && perfil) {
-          await crearGasto({
-            hogar_id: hogar.id,
-            categoria_id: null,
-            categoria_texto: 'Factura',
-            pagado_por: perfil.id,
-            monto: montoPersonal,
-            descripcion: `Factura · ${factura.nombre}`,
-            fecha: new Date().toISOString().split('T')[0],
-            observaciones: `factura_ref:${factura.id}`,
-            scope: 'personal',
-          });
-        }
+        await crearGasto({
+          hogar_id: hogar.id,
+          categoria_id: null,
+          categoria_texto: 'Factura',
+          pagado_por: perfil.id,
+          monto: montoPersonal,
+          descripcion: `Factura · ${factura.nombre}`,
+          fecha: new Date().toISOString().split('T')[0],
+          observaciones: `factura_ref:${factura.id}`,
+          scope: 'personal',
+        });
       } catch {
-        Alert.alert('Error al pagar', 'No se pudo registrar el pago. Intentá de nuevo.');
+        mostrarToast('Pagado, pero no se pudo actualizar tu balance', 'error');
+        return;
       }
-    };
-
-    // Facturas personales: solo cambiar estado (ya impactan el balance vía useResumenPersonal)
-    // Facturas de hogar sin monto definido: solo cambiar estado
-    if (factura.scope === 'personal' || !factura.monto) {
-      ejecutarPago();
-      return;
+      mostrarToast(`Pagado · ${formatMonto(montoPersonal)} en tu balance`);
+    } else {
+      mostrarToast('Factura marcada como pagada');
     }
-
-    const monto = factura.monto;
-    const montoFormateado = `$${monto.toLocaleString('es-UY')}`;
-
-    if (Platform.OS === 'web') {
-      const afectar = window.confirm(
-        `¿Registrar el impacto de "${factura.nombre}" (${montoFormateado}) en tu balance personal?`,
-      );
-      if (!afectar) { ejecutarPago(); return; }
-      const solo = window.confirm(
-        '¿Lo pagaste solo?\n\nAceptar → lo pagué solo   ·   Cancelar → lo dividí',
-      );
-      ejecutarPago(solo ? monto : monto / 2);
-      return;
-    }
-
-    Alert.alert(
-      '¿Cómo lo pagaste?',
-      `${factura.nombre} · ${montoFormateado}`,
-      [
-        { text: 'Lo pagué solo', onPress: () => ejecutarPago(monto) },
-        { text: 'Lo dividí', onPress: () => ejecutarPago(monto / 2) },
-        { text: 'Solo cambiar estado', onPress: () => ejecutarPago() },
-        { text: 'Cancelar', style: 'cancel' },
-      ],
-    );
   };
+
+  const handlePagar = (factura: Factura) => {
+    // Personales y sin monto: no hay elección, pago directo
+    if (factura.scope === 'personal' || !factura.monto) {
+      ejecutarPago(factura);
+      return;
+    }
+    setPagoSheet({ visible: true, factura });
+  };
+
+  // ── Despagar ──────────────────────────────────────────────────────────────
 
   const handleDespagar = (facturaId: string, nombre: string) => {
-    if (Platform.OS === 'web') {
-      if (!window.confirm(`¿Marcar "${nombre}" como pendiente? Si tenías un gasto personal asociado también se eliminará.`)) return;
-      despagar(facturaId).catch(() => Alert.alert('Error', 'No se pudo actualizar el estado.'));
-      return;
-    }
-    Alert.alert(
-      'Marcar como pendiente',
-      `La factura "${nombre}" volverá a estar pendiente. Si registraste un impacto en tu balance personal, también se eliminará.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Marcar como pendiente', onPress: () => despagar(facturaId).catch(() => Alert.alert('Error', 'No se pudo actualizar el estado.')) },
-      ],
-    );
+    setDialog({
+      titulo: 'Marcar como pendiente',
+      descripcion: `"${nombre}" volverá a estar pendiente. Si registraste un impacto en tu balance personal, también se eliminará.`,
+      ctaPrimaria: 'Marcar como pendiente',
+      onConfirmar: () => {
+        setDialog(null);
+        despagar(facturaId)
+          .then(() => mostrarToast('Factura marcada como pendiente'))
+          .catch(() => mostrarToast('No se pudo actualizar el estado', 'error'));
+      },
+    });
   };
 
+  // ── Eliminar ──────────────────────────────────────────────────────────────
+
   const handleEliminar = (id: string, nombre: string) => {
-    if (Platform.OS === 'web') {
-      if (!window.confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
-      eliminar(id).catch(() => Alert.alert('Error', 'No se pudo eliminar la factura.'));
-      return;
-    }
-    Alert.alert(`Eliminar ${nombre}`, '¿Estás seguro? Se eliminará la factura permanentemente.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => eliminar(id).catch(() => Alert.alert('Error', 'No se pudo eliminar la factura.')) },
-    ]);
+    setDialog({
+      titulo: 'Eliminar factura',
+      descripcion: `"${nombre}" se eliminará permanentemente. Esta acción no se puede deshacer.`,
+      ctaPrimaria: 'Eliminar',
+      destructivo: true,
+      onConfirmar: () => {
+        setDialog(null);
+        eliminar(id).catch(() => mostrarToast('No se pudo eliminar la factura', 'error'));
+      },
+    });
   };
+
+  // ── Editar ────────────────────────────────────────────────────────────────
 
   const handleEditar = (factura: Factura) => {
     router.push({
@@ -155,6 +162,32 @@ export default function FacturasScreen() {
       },
     });
   };
+
+  // ── Opciones de pago para ActionSheet ─────────────────────────────────────
+
+  const accionesPago = (): AccionItem[] => {
+    const f = pagoSheet.factura;
+    if (!f?.monto) return [];
+    return [
+      {
+        label: 'Lo pagué solo',
+        descripcion: `${formatMonto(f.monto)} se descuenta de tu balance`,
+        onPress: () => ejecutarPago(f, f.monto!),
+      },
+      {
+        label: 'Lo dividí',
+        descripcion: `${formatMonto(f.monto / 2)} se descuenta de tu balance`,
+        onPress: () => ejecutarPago(f, f.monto! / 2),
+      },
+      {
+        label: 'Solo cambiar estado',
+        descripcion: 'No impacta tu balance personal',
+        onPress: () => ejecutarPago(f),
+      },
+    ];
+  };
+
+  // ── Filtros ────────────────────────────────────────────────────────────────
 
   const FILTROS: { key: Filtro; label: string }[] = [
     { key: 'todas', label: 'Todas' },
@@ -283,8 +316,37 @@ export default function FacturasScreen() {
         {isPersonal && <PrivacyBadge />}
       </ScrollView>
 
-      {/* Payment modal for Android */}
       <FAB />
+
+      {/* ActionSheet: método de pago */}
+      <ActionSheet
+        visible={pagoSheet.visible}
+        titulo="¿Cómo lo pagaste?"
+        subtitulo={pagoSheet.factura ? `${pagoSheet.factura.nombre} · ${formatMonto(pagoSheet.factura.monto!)}` : undefined}
+        acciones={accionesPago()}
+        onClose={() => setPagoSheet({ visible: false, factura: null })}
+      />
+
+      {/* ConfirmDialog: eliminar o despagar */}
+      {dialog && (
+        <ConfirmDialog
+          visible
+          titulo={dialog.titulo}
+          descripcion={dialog.descripcion}
+          ctaPrimaria={dialog.ctaPrimaria}
+          destructivo={dialog.destructivo}
+          onConfirmar={dialog.onConfirmar}
+          onCancelar={() => setDialog(null)}
+        />
+      )}
+
+      {/* Toast */}
+      <Toast
+        visible={toast.visible}
+        mensaje={toast.mensaje}
+        tipo={toast.tipo}
+        onHide={() => setToast({ visible: false, mensaje: '' })}
+      />
     </SafeAreaView>
   );
 }
@@ -311,13 +373,10 @@ const styles = StyleSheet.create({
   filtroText: { fontFamily: 'Manrope_700Bold', fontSize: 10 },
   scroll: { flex: 1 },
   content: { padding: 16, gap: 10, paddingBottom: 120 },
-
-  // Empty state
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12 },
   emptyIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   emptyTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 15, textAlign: 'center' },
   emptySubtext: { fontFamily: 'Manrope_500Medium', fontSize: 11, textAlign: 'center' },
   emptyBtn: { borderRadius: 13, paddingVertical: 12, paddingHorizontal: 24, marginTop: 8 },
   emptyBtnText: { fontFamily: 'Manrope_700Bold', fontSize: 12, color: '#fff' },
-
 });
