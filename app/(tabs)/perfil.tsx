@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
+import { ThemePickerCard } from '@/components/ThemePickerCard';
 import { formatMes } from '@/utils/format';
 
 export default function PerfilScreen() {
@@ -179,6 +180,9 @@ export default function PerfilScreen() {
             </View>
           </View>
         )}
+
+        {/* Apariencia */}
+        <ThemePickerCard />
 
         {/* ConfigCard */}
         <View style={[styles.configCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>

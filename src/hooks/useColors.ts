@@ -1,7 +1,2 @@
-import { useColorScheme } from 'react-native';
-import { LightColors, DarkColors } from '@/constants/theme';
-
-export function useColors() {
-  const scheme = useColorScheme();
-  return scheme === 'dark' ? DarkColors : LightColors;
-}
+// Re-export desde ThemeContext para que todos los imports existentes sigan funcionando.
+export { useColors } from '@/context/ThemeContext';

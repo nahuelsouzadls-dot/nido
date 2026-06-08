@@ -12,13 +12,15 @@ import {
 } from '@expo-google-fonts/manrope';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { ThemeProvider, useColors, useTheme } from '@/context/ThemeContext';
 import { SpaceProvider } from '@/context/SpaceContext';
 import { registrarPushToken } from '@/services/notificaciones';
-import { useColors } from '@/hooks/useColors';
 
-export default function RootLayout() {
+// Componente interno que consume el contexto de tema
+function AppContent() {
   const { setSession, setLoading, cargarPerfil, perfil, loading } = useAuthStore();
   const colors = useColors();
+  const { isDark } = useTheme();
 
   const [fontsLoaded] = useFonts({
     Manrope_500Medium,
@@ -40,7 +42,6 @@ export default function RootLayout() {
         setLoading(false);
       }
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -53,7 +54,7 @@ export default function RootLayout() {
   if (loading || !fontsLoaded) {
     return (
       <GestureHandlerRootView style={styles.root}>
-        <StatusBar style="dark" />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <View style={[styles.splash, { backgroundColor: colors.background }]}>
           <ActivityIndicator color={colors.primary} size="large" />
         </View>
@@ -64,41 +65,31 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SpaceProvider>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="modal/gasto"
-          options={{ presentation: 'modal', headerShown: false }}
-        />
-        <Stack.Screen
-          name="modal/factura"
-          options={{ presentation: 'modal', headerShown: false }}
-        />
-        <Stack.Screen
-          name="modal/objetivo"
-          options={{ presentation: 'modal', headerShown: false }}
-        />
-        <Stack.Screen
-          name="modal/ingreso"
-          options={{ presentation: 'modal', headerShown: false }}
-        />
-        <Stack.Screen
-          name="modal/scan"
-          options={{ presentation: 'fullScreenModal', headerShown: false }}
-        />
-      </Stack>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="modal/gasto" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="modal/factura" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="modal/objetivo" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="modal/ingreso" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="modal/scan" options={{ presentation: 'fullScreenModal', headerShown: false }} />
+        </Stack>
       </SpaceProvider>
     </GestureHandlerRootView>
   );
 }
 
+// ThemeProvider va afuera para que AppContent pueda consumirlo
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  splash: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  splash: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });
