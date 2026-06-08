@@ -20,7 +20,9 @@ import { FAB } from '@/components/FAB';
 import { ContextSelectorBar } from '@/components/ui/ContextSelectorBar';
 import { PrivacyBadge } from '@/components/ui/PrivacyBadge';
 import { useFacturas } from '@/hooks/useFacturas';
+import { useAuthStore } from '@/store/auth';
 import { formatMes } from '@/utils/format';
+import type { Factura } from '@/types';
 
 type Filtro = 'todas' | 'pendientes' | 'pagadas';
 
@@ -28,12 +30,18 @@ export default function FacturasScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeContext } = useSpace();
+  const { perfil } = useAuthStore();
   const isPersonal = activeContext === 'personal';
   const hoy = new Date();
   const mes = hoy.getMonth() + 1;
   const anio = hoy.getFullYear();
 
   const { facturas, pagar, eliminar, recargar, todasPagadas } = useFacturas(mes, anio, { scope: activeContext });
+
+  const puedeModificar = (factura: { scope: string; creado_por: string | null }) => {
+    if (factura.scope === 'personal') return factura.creado_por === perfil?.id;
+    return true;
+  };
   const [filtro, setFiltro] = useState<Filtro>('todas');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -56,10 +64,29 @@ export default function FacturasScreen() {
   };
 
   const handleEliminar = (id: string, nombre: string) => {
+    if (Platform.OS === 'web') {
+      if (!window.confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+      eliminar(id).catch(() => Alert.alert('Error', 'No se pudo eliminar la factura.'));
+      return;
+    }
     Alert.alert(`Eliminar ${nombre}`, '¿Estás seguro? Se eliminará la factura permanentemente.', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => eliminar(id) },
+      { text: 'Eliminar', style: 'destructive', onPress: () => eliminar(id).catch(() => Alert.alert('Error', 'No se pudo eliminar la factura.')) },
     ]);
+  };
+
+  const handleEditar = (factura: Factura) => {
+    router.push({
+      pathname: '/modal/factura',
+      params: {
+        id: factura.id,
+        nombre: factura.nombre,
+        monto: factura.monto?.toString() ?? '',
+        diaVencimiento: factura.dia_vencimiento.toString(),
+        responsableId: factura.responsable_id ?? '',
+        scope: factura.scope,
+      },
+    });
   };
 
   const FILTROS: { key: Filtro; label: string }[] = [
@@ -180,12 +207,8 @@ export default function FacturasScreen() {
               factura={factura}
               accentColor={isPersonal ? colors.personal : undefined}
               onPagar={() => handlePagar(factura.id, factura.monto)}
-              onPress={() =>
-                Alert.alert(factura.nombre, undefined, [
-                  { text: 'Eliminar', style: 'destructive', onPress: () => handleEliminar(factura.id, factura.nombre) },
-                  { text: 'Cerrar', style: 'cancel' },
-                ])
-              }
+              onEditar={puedeModificar(factura) ? () => handleEditar(factura) : undefined}
+              onEliminar={puedeModificar(factura) ? () => handleEliminar(factura.id, factura.nombre) : undefined}
             />
           ))
         )}

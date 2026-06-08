@@ -10,7 +10,7 @@ import {
   Text as RNText,
   TextInput,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useSpace } from '@/context/SpaceContext';
@@ -19,6 +19,7 @@ import { ScopeSelector } from '@/components/ui/ScopeSelector';
 import { PrivacyBadge } from '@/components/ui/PrivacyBadge';
 import { useAuthStore } from '@/store/auth';
 import { useFacturas } from '@/hooks/useFacturas';
+import { actualizarFactura } from '@/services/facturas';
 import type { Scope } from '@/types';
 
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
@@ -49,11 +50,24 @@ export default function ModalFactura() {
   const hoy = new Date();
   const { crear } = useFacturas(hoy.getMonth() + 1, hoy.getFullYear());
 
-  const [scope, setScope] = useState<Scope>(activeContext);
-  const [nombre, setNombre] = useState('');
-  const [monto, setMonto] = useState('');
-  const [diaVencimiento, setDiaVencimiento] = useState('');
-  const [responsableId, setResponsableId] = useState(perfil?.id ?? '');
+  // ── Params para modo edición ──────────────────────────────────────────────
+  const params = useLocalSearchParams<{
+    id?: string;
+    nombre?: string;
+    monto?: string;
+    diaVencimiento?: string;
+    responsableId?: string;
+    scope?: string;
+  }>();
+  const esEdicion = !!params.id;
+  const scopeInicial = (params.scope as Scope | undefined) ?? activeContext;
+
+  // ── Estado ────────────────────────────────────────────────────────────────
+  const [scope] = useState<Scope>(scopeInicial);
+  const [nombre, setNombre] = useState(params.nombre ?? '');
+  const [monto, setMonto] = useState(params.monto ?? '');
+  const [diaVencimiento, setDiaVencimiento] = useState(params.diaVencimiento ?? '');
+  const [responsableId, setResponsableId] = useState(params.responsableId ?? perfil?.id ?? '');
   const [loading, setLoading] = useState(false);
   const [nombreFocused, setNombreFocused] = useState(false);
   const [diaFocused, setDiaFocused] = useState(false);
@@ -71,20 +85,31 @@ export default function ModalFactura() {
       Alert.alert('Día inválido', 'El día debe ser entre 1 y 31');
       return;
     }
+    const montoNum = monto ? parseFloat(monto.replace(',', '.')) : null;
+
     setLoading(true);
     try {
-      await crear({
-        nombre: nombre.trim(),
-        monto: monto ? parseFloat(monto.replace(',', '.')) : null,
-        dia_vencimiento: dia,
-        responsable_id: scope === 'hogar' ? (responsableId || null) : null,
-        frecuencia: 'mensual',
-        scope,
-        creado_por: perfil?.id ?? null,
-      });
+      if (esEdicion) {
+        await actualizarFactura(params.id!, {
+          nombre: nombre.trim(),
+          monto: montoNum,
+          dia_vencimiento: dia,
+          responsable_id: scope === 'hogar' ? (responsableId || null) : null,
+        });
+      } else {
+        await crear({
+          nombre: nombre.trim(),
+          monto: montoNum,
+          dia_vencimiento: dia,
+          responsable_id: scope === 'hogar' ? (responsableId || null) : null,
+          frecuencia: 'mensual',
+          scope,
+          creado_por: perfil?.id ?? null,
+        });
+      }
       router.back();
     } catch {
-      Alert.alert('Error', 'No se pudo crear la factura');
+      Alert.alert('Error', `No se pudo ${esEdicion ? 'actualizar' : 'crear'} la factura`);
     } finally {
       setLoading(false);
     }
@@ -97,7 +122,9 @@ export default function ModalFactura() {
         <TouchableOpacity onPress={() => router.back()}>
           <MaterialCommunityIcons name="close" size={22} color={colors.textSecondary} />
         </TouchableOpacity>
-        <RNText style={[styles.topTitle, { color: colors.textPrimary }]}>Nueva factura</RNText>
+        <RNText style={[styles.topTitle, { color: colors.textPrimary }]}>
+          {esEdicion ? 'Editar factura' : 'Nueva factura'}
+        </RNText>
         <TouchableOpacity onPress={handleGuardar} disabled={loading}>
           <RNText style={[styles.topSave, { color: loading ? colors.textSecondary : accentColor }]}>
             Guardar
@@ -128,8 +155,8 @@ export default function ModalFactura() {
           <RNText style={[styles.montoHint, { color: colors.textSecondary }]}>opcional</RNText>
         </View>
 
-        {/* Scope selector */}
-        <ScopeSelector value={scope} onChange={setScope} />
+        {/* Scope selector — solo en creación */}
+        {!esEdicion && <ScopeSelector value={scope} onChange={() => {}} />}
 
         {/* Campos */}
         <View style={[styles.fieldsCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
@@ -146,7 +173,7 @@ export default function ModalFactura() {
               value={nombre}
               onChangeText={setNombre}
               returnKeyType="next"
-              autoFocus
+              autoFocus={!esEdicion}
               onFocus={() => setNombreFocused(true)}
               onBlur={() => setNombreFocused(false)}
             />
@@ -243,7 +270,6 @@ export default function ModalFactura() {
         {scope === 'personal' && <PrivacyBadge />}
       </ScrollView>
 
-      {/* Save button outside ScrollView — always reachable regardless of keyboard */}
       <View style={styles.saveBtnContainer}>
         <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: accentColor, opacity: loading ? 0.6 : 1 }]}
@@ -252,7 +278,11 @@ export default function ModalFactura() {
           activeOpacity={0.8}
         >
           <RNText style={styles.saveBtnText}>
-            {loading ? 'Guardando...' : scope === 'personal' ? 'Guardar factura personal' : 'Guardar factura'}
+            {loading
+              ? (esEdicion ? 'Guardando...' : 'Guardando...')
+              : esEdicion
+                ? 'Guardar cambios'
+                : scope === 'personal' ? 'Guardar factura personal' : 'Guardar factura'}
           </RNText>
         </TouchableOpacity>
       </View>

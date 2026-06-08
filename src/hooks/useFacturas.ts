@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   getFacturasConEstado,
   crearFactura,
+  actualizarFactura,
   pagarFactura,
   eliminarFactura,
   actualizarVencidas,
@@ -179,10 +180,33 @@ export function useFacturas(mes: number, anio: number, options?: { scope?: Scope
     [hogar, perfil, facturas, mes, anio, cargar],
   );
 
+  const editar = useCallback(
+    async (
+      id: string,
+      updates: { nombre?: string; monto?: number | null; dia_vencimiento?: number; responsable_id?: string | null },
+    ) => {
+      // Optimistic update so the list reflects changes immediately
+      setFacturas((prev) => prev.map((f) => (f.id === id ? { ...f, ...updates } : f)));
+      try {
+        await actualizarFactura(id, updates);
+      } catch (e) {
+        await cargar().catch(() => {});
+        throw e;
+      }
+    },
+    [cargar],
+  );
+
   const eliminar = useCallback(
     async (id: string) => {
-      await eliminarFactura(id);
-      await cargar();
+      // Optimistic: remove from list immediately
+      setFacturas((prev) => prev.filter((f) => f.id !== id));
+      try {
+        await eliminarFactura(id);
+      } catch (e) {
+        await cargar().catch(() => {});
+        throw e;
+      }
     },
     [cargar],
   );
@@ -192,5 +216,5 @@ export function useFacturas(mes: number, anio: number, options?: { scope?: Scope
   const vencidas = facturas.filter((f) => f.pago_actual?.estado === 'vencida');
   const todasPagadas = facturas.length > 0 && pendientes.length === 0 && vencidas.length === 0;
 
-  return { facturas, loading, crear, pagar, eliminar, recargar: cargar, pendientes, pagadas, vencidas, todasPagadas };
+  return { facturas, loading, crear, editar, pagar, eliminar, recargar: cargar, pendientes, pagadas, vencidas, todasPagadas };
 }

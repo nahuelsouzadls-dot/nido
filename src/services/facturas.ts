@@ -86,6 +86,19 @@ export async function pagarFactura(
   return data as FacturaPago;
 }
 
+export async function actualizarFactura(
+  id: string,
+  updates: {
+    nombre?: string;
+    monto?: number | null;
+    dia_vencimiento?: number;
+    responsable_id?: string | null;
+  },
+) {
+  const { error } = await supabase.from('facturas').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
 export async function eliminarFactura(id: string) {
   const { error } = await supabase.from('facturas').update({ activa: false }).eq('id', id);
   if (error) throw error;

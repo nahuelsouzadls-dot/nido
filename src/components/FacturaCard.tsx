@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Text as RNText } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text as RNText, Alert, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
@@ -9,7 +9,8 @@ import type { Factura } from '@/types';
 type Props = {
   factura: Factura;
   onPagar: () => void;
-  onPress?: () => void;
+  onEditar?: () => void;
+  onEliminar?: () => void;
   accentColor?: string;
 };
 
@@ -22,11 +23,12 @@ function getVencimientoLabel(dia: number): string {
   return `Vence el día ${dia}`;
 }
 
-export function FacturaCard({ factura, onPagar, onPress, accentColor }: Props) {
+export function FacturaCard({ factura, onPagar, onEditar, onEliminar, accentColor }: Props) {
   const colors = useColors();
   const accent = accentColor ?? colors.primary;
   const esPagada = factura.pago_actual?.estado === 'pagada';
   const esVencida = factura.pago_actual?.estado === 'vencida';
+  const tieneMenu = !!(onEditar || onEliminar);
 
   const handlePagar = () => {
     if (esPagada) return;
@@ -34,15 +36,34 @@ export function FacturaCard({ factura, onPagar, onPress, accentColor }: Props) {
     onPagar();
   };
 
+  const showMenu = () => {
+    const opciones: { text: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void }[] = [];
+    if (onEditar) opciones.push({ text: 'Editar', onPress: onEditar });
+    if (onEliminar) opciones.push({ text: 'Eliminar', style: 'destructive', onPress: onEliminar });
+    opciones.push({ text: 'Cancelar', style: 'cancel' });
+
+    if (Platform.OS === 'web') {
+      // En web mostramos las acciones disponibles vía window.confirm / navegación directa
+      if (onEditar && onEliminar) {
+        const accion = window.confirm(`${factura.nombre}\n\nPresioná OK para editar o Cancelar para ver más opciones.`);
+        if (accion) { onEditar(); return; }
+        if (window.confirm('¿Eliminar esta factura? Esta acción no se puede deshacer.')) onEliminar();
+      } else if (onEditar) {
+        onEditar();
+      } else if (onEliminar) {
+        if (window.confirm(`¿Eliminar "${factura.nombre}"? Esta acción no se puede deshacer.`)) onEliminar();
+      }
+      return;
+    }
+
+    Alert.alert(factura.nombre, undefined, opciones);
+  };
+
   const cardBg = esPagada ? colors.cardSage : colors.card;
   const cardBorder = esPagada ? 'rgba(90,122,72,0.2)' : colors.borderSubtle;
 
   return (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}
-      onPress={onPress}
-      activeOpacity={0.85}
-    >
+    <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
       <View style={styles.top}>
         <View style={{ flex: 1, gap: 2 }}>
           <RNText style={[styles.nombre, { color: colors.textPrimary }]}>{factura.nombre}</RNText>
@@ -58,15 +79,22 @@ export function FacturaCard({ factura, onPagar, onPress, accentColor }: Props) {
           ) : null}
         </View>
 
-        {/* Badge */}
-        <View style={[
-          styles.badge,
-          { backgroundColor: esPagada ? 'rgba(90,122,72,0.12)' : `${accent}1A` },
-        ]}>
+        <View style={[styles.badge, { backgroundColor: esPagada ? 'rgba(90,122,72,0.12)' : `${accent}1A` }]}>
           <RNText style={[styles.badgeText, { color: esPagada ? colors.sageDark : accent }]}>
             {esPagada ? 'Pagada' : 'Pendiente'}
           </RNText>
         </View>
+
+        {tieneMenu && (
+          <TouchableOpacity
+            onPress={showMenu}
+            style={styles.menuBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            activeOpacity={0.6}
+          >
+            <MaterialCommunityIcons name="dots-horizontal" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.bottom}>
@@ -97,7 +125,7 @@ export function FacturaCard({ factura, onPagar, onPress, accentColor }: Props) {
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -135,6 +163,11 @@ const styles = StyleSheet.create({
   badgeText: {
     fontFamily: 'Manrope_700Bold',
     fontSize: 8,
+  },
+  menuBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
   },
   bottom: {
     flexDirection: 'row',
