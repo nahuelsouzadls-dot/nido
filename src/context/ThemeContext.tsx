@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LightColors, DarkColors, type ColorPalette } from '@/constants/theme';
 
-export type ThemeMode = 'claro' | 'nocturno' | 'sistema';
+export type ThemeMode = 'claro' | 'nocturno';
 
 type ThemeContextValue = {
   themeMode: ThemeMode;
@@ -20,14 +19,11 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>('claro');
 
   useEffect(() => {
     AsyncStorage.getItem('nido_theme').then((val) => {
-      if (val === 'nocturno' || val === 'sistema') {
-        setThemeModeState(val as ThemeMode);
-      }
+      if (val === 'nocturno') setThemeModeState('nocturno');
     });
   }, []);
 
@@ -36,11 +32,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem('nido_theme', mode);
   };
 
-  const isDark = useMemo(() => {
-    if (themeMode === 'nocturno') return true;
-    if (themeMode === 'claro') return false;
-    return systemScheme === 'dark';
-  }, [themeMode, systemScheme]);
+  const isDark = themeMode === 'nocturno';
 
   const colors = useMemo<ColorPalette>(
     () => (isDark ? DarkColors : LightColors),

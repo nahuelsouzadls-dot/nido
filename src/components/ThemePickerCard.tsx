@@ -23,12 +23,6 @@ const OPCIONES: ThemeOption[] = [
     swatches: ['#12090D', '#C4889A', '#7AB860'],
     icono: 'weather-night',
   },
-  {
-    id: 'sistema',
-    label: 'Sistema',
-    swatches: ['#D3D1C7', '#B4B2A9', '#888780'],
-    icono: 'cellphone',
-  },
 ];
 
 export function ThemePickerCard() {
@@ -87,9 +81,6 @@ export function ThemePickerCard() {
         })}
       </View>
 
-      <RNText style={[styles.hint, { color: colors.textSecondary }]}>
-        Sistema sigue el modo del dispositivo automáticamente.
-      </RNText>
     </View>
   );
 }
