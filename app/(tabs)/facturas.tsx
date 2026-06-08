@@ -21,6 +21,7 @@ import { ContextSelectorBar } from '@/components/ui/ContextSelectorBar';
 import { PrivacyBadge } from '@/components/ui/PrivacyBadge';
 import { useFacturas } from '@/hooks/useFacturas';
 import { useAuthStore } from '@/store/auth';
+import { crearGasto } from '@/services/gastos';
 import { formatMes } from '@/utils/format';
 import type { Factura } from '@/types';
 
@@ -30,7 +31,7 @@ export default function FacturasScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeContext } = useSpace();
-  const { perfil } = useAuthStore();
+  const { perfil, hogar } = useAuthStore();
   const isPersonal = activeContext === 'personal';
   const hoy = new Date();
   const mes = hoy.getMonth() + 1;
@@ -57,10 +58,59 @@ export default function FacturasScreen() {
     return true;
   });
 
-  const handlePagar = (facturaId: string, monto?: number | null) => {
-    pagar(facturaId, monto ?? undefined).catch(() => {
-      Alert.alert('Error al pagar', 'No se pudo registrar el pago. Intentá de nuevo.');
-    });
+  const handlePagar = (factura: Factura) => {
+    const ejecutarPago = async (montoPersonal?: number) => {
+      try {
+        await pagar(factura.id, factura.monto ?? undefined);
+        if (montoPersonal && montoPersonal > 0 && hogar && perfil) {
+          await crearGasto({
+            hogar_id: hogar.id,
+            categoria_id: null,
+            categoria_texto: 'Factura',
+            pagado_por: perfil.id,
+            monto: montoPersonal,
+            descripcion: `Factura · ${factura.nombre}`,
+            fecha: new Date().toISOString().split('T')[0],
+            scope: 'personal',
+          });
+        }
+      } catch {
+        Alert.alert('Error al pagar', 'No se pudo registrar el pago. Intentá de nuevo.');
+      }
+    };
+
+    // Facturas personales: solo cambiar estado (ya impactan el balance vía useResumenPersonal)
+    // Facturas de hogar sin monto definido: solo cambiar estado
+    if (factura.scope === 'personal' || !factura.monto) {
+      ejecutarPago();
+      return;
+    }
+
+    const monto = factura.monto;
+    const montoFormateado = `$${monto.toLocaleString('es-UY')}`;
+
+    if (Platform.OS === 'web') {
+      const afectar = window.confirm(
+        `¿Registrar el impacto de "${factura.nombre}" (${montoFormateado}) en tu balance personal?`,
+      );
+      if (!afectar) { ejecutarPago(); return; }
+      const solo = window.confirm(
+        '¿Lo pagaste solo?\n\nAceptar → lo pagué solo   ·   Cancelar → lo dividí',
+      );
+      ejecutarPago(solo ? monto : monto / 2);
+      return;
+    }
+
+    Alert.alert(
+      '¿Cómo lo pagaste?',
+      `${factura.nombre} · ${montoFormateado}`,
+      [
+        { text: 'Lo pagué solo', onPress: () => ejecutarPago(monto) },
+        { text: 'Lo dividí', onPress: () => ejecutarPago(monto / 2) },
+        { text: 'Solo cambiar estado', onPress: () => ejecutarPago() },
+        { text: 'Cancelar', style: 'cancel' },
+      ],
+    );
   };
 
   const handleEliminar = (id: string, nombre: string) => {
@@ -206,7 +256,7 @@ export default function FacturasScreen() {
               key={factura.id}
               factura={factura}
               accentColor={isPersonal ? colors.personal : undefined}
-              onPagar={() => handlePagar(factura.id, factura.monto)}
+              onPagar={() => handlePagar(factura)}
               onEditar={puedeModificar(factura) ? () => handleEditar(factura) : undefined}
               onEliminar={puedeModificar(factura) ? () => handleEliminar(factura.id, factura.nombre) : undefined}
             />
