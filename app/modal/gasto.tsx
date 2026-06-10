@@ -135,7 +135,7 @@ export default function ModalGasto() {
           scope,
           num_cuotas: cuotas,
           tarjeta: tarjeta,
-          fecha_inicio: hoy.toISOString().split('T')[0],
+          fecha_inicio: `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`,
         });
       } else {
         const nuevo = await agregar({
@@ -155,8 +155,9 @@ export default function ModalGasto() {
         : 'Gasto registrado';
       setToast({ visible: true, msg });
       setTimeout(() => router.back(), 1200);
-    } catch {
-      Alert.alert('Error', 'No se pudo guardar el gasto. Intentá de nuevo.');
+    } catch (e) {
+      console.error('[ModalGasto] error al guardar:', e);
+      Alert.alert('Error', `No se pudo guardar. ${e instanceof Error ? e.message : 'Intentá de nuevo.'}`);
     } finally {
       setLoading(false);
     }
