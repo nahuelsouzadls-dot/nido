@@ -135,7 +135,7 @@ export default function ModalGasto() {
           scope,
           num_cuotas: cuotas,
           tarjeta: tarjeta,
-          fecha_inicio: `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`,
+          fecha_inicio: (() => { const d = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; })(),
         });
       } else {
         const nuevo = await agregar({

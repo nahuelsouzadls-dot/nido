@@ -37,7 +37,7 @@ export function useFacturas(mes: number, anio: number, options?: { scope?: Scope
           const mesesTranscurridos =
             (hoy.getFullYear() - inicio.getFullYear()) * 12 +
             (hoy.getMonth() - inicio.getMonth());
-          return mesesTranscurridos < f.num_cuotas;
+          return mesesTranscurridos >= 0 && mesesTranscurridos < f.num_cuotas;
         })
         .map((f) => {
           if (!f.num_cuotas || !f.fecha_inicio) return f;
