@@ -19,6 +19,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { ScopeSelector } from '@/components/ui/ScopeSelector';
 import { PrivacyBadge } from '@/components/ui/PrivacyBadge';
 import { adjuntarFotoGasto, crearGasto } from '@/services/gastos';
+import { crearFactura } from '@/services/facturas';
 import { useAuthStore } from '@/store/auth';
 import { useGastos } from '@/hooks/useGastos';
 import { Toast } from '@/components/ui/Toast';
@@ -39,11 +40,6 @@ function getCatIcon(icono: string): keyof typeof MaterialCommunityIcons.glyphMap
   return (icono as keyof typeof MaterialCommunityIcons.glyphMap) ?? 'dots-horizontal';
 }
 
-// Fecha del mes relativo a hoy + N meses
-function fechaEnMes(base: Date, offsetMeses: number): string {
-  const d = new Date(base.getFullYear(), base.getMonth() + offsetMeses, Math.min(base.getDate(), 28));
-  return d.toISOString().split('T')[0];
-}
 
 export default function ModalGasto() {
   const router = useRouter();
@@ -128,24 +124,19 @@ export default function ModalGasto() {
       };
 
       if (esCuotas && cuotas > 1 && hogar) {
-        const grupoId = crypto.randomUUID();
-        const montoPorCuota = montoNum / cuotas;
-        // Creamos todas las cuotas en paralelo usando el servicio directamente
-        // (agregar() del hook solo agrega al mes actual)
-        await Promise.all(
-          Array.from({ length: cuotas }, (_, i) =>
-            crearGasto({
-              ...baseGasto,
-              hogar_id: hogar.id,
-              monto: parseFloat(montoPorCuota.toFixed(2)),
-              fecha: fechaEnMes(hoy, i),
-              cuota_numero: i + 1,
-              cuota_total: cuotas,
-              cuotas_grupo_id: grupoId,
-              tarjeta: tarjeta,
-            }),
-          ),
-        );
+        await crearFactura({
+          hogar_id: hogar.id,
+          nombre: descripcion.trim(),
+          monto: parseFloat((montoNum / cuotas).toFixed(2)),
+          dia_vencimiento: hoy.getDate(),
+          responsable_id: scope === 'personal' ? null : pagadoPor || null,
+          creado_por: perfil?.id,
+          frecuencia: 'mensual',
+          scope,
+          num_cuotas: cuotas,
+          tarjeta: tarjeta,
+          fecha_inicio: hoy.toISOString().split('T')[0],
+        });
       } else {
         const nuevo = await agregar({
           ...baseGasto,

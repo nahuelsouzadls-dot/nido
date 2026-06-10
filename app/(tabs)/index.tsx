@@ -92,7 +92,11 @@ function BillRow({ factura }: { factura: Factura }) {
       <View style={{ flex: 1 }}>
         <RNText style={[styles.billName, { color: colors.textPrimary }]}>{factura.nombre}</RNText>
         <RNText style={[styles.billDue, { color: colors.textSecondary }]}>
-          {isPagada ? 'Pagada' : `Día ${factura.dia_vencimiento}`}
+          {isPagada
+            ? 'Pagada'
+            : factura.num_cuotas && factura.cuota_actual
+              ? `Cuota ${factura.cuota_actual} de ${factura.num_cuotas}`
+              : `Día ${factura.dia_vencimiento}`}
         </RNText>
       </View>
       <View style={[

@@ -54,11 +54,16 @@ export function FacturaCard({ factura, onPagar, onDespagar, onEditar, onEliminar
         <View style={styles.top}>
           <View style={{ flex: 1, gap: 2 }}>
             <RNText style={[styles.nombre, { color: colors.textPrimary }]}>{factura.nombre}</RNText>
-            {!esPagada && (
+            {factura.num_cuotas && factura.cuota_actual ? (
+              <RNText style={[styles.vencimiento, { color: accent }]}>
+                {`Cuota ${factura.cuota_actual} de ${factura.num_cuotas}`}
+                {factura.tarjeta ? ` · ${factura.tarjeta}` : ''}
+              </RNText>
+            ) : !esPagada ? (
               <RNText style={[styles.vencimiento, { color: esVencida ? colors.primaryUrgent : colors.textSecondary }]}>
                 {getVencimientoLabel(factura.dia_vencimiento)}
               </RNText>
-            )}
+            ) : null}
             {factura.responsable ? (
               <RNText style={[styles.responsable, { color: colors.textSecondary }]}>
                 Compartida con {factura.responsable.nombre.split(' ')[0]}

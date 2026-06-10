@@ -44,6 +44,9 @@ export async function crearFactura(factura: {
   creado_por?: string | null;
   frecuencia?: 'mensual' | 'anual';
   scope?: Scope;
+  num_cuotas?: number | null;
+  tarjeta?: string | null;
+  fecha_inicio?: string | null;
 }) {
   const { data, error } = await supabase
     .from('facturas')

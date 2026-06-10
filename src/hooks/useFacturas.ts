@@ -25,10 +25,30 @@ export function useFacturas(mes: number, anio: number, options?: { scope?: Scope
     if (!hogar) return;
     setLoading(true);
     try {
-      // Solo actualizar vencidas para facturas del hogar (las personales no comparten estado)
       if (scope === 'hogar') await actualizarVencidas(hogar.id, mes, anio);
       const data = await getFacturasConEstado(hogar.id, mes, anio, scope);
-      setFacturas(data);
+
+      // Para facturas con cuotas: filtrar las que ya terminaron y calcular cuota_actual.
+      const hoy = new Date();
+      const enriched = data
+        .filter((f) => {
+          if (!f.num_cuotas || !f.fecha_inicio) return true;
+          const inicio = new Date(f.fecha_inicio);
+          const mesesTranscurridos =
+            (hoy.getFullYear() - inicio.getFullYear()) * 12 +
+            (hoy.getMonth() - inicio.getMonth());
+          return mesesTranscurridos < f.num_cuotas;
+        })
+        .map((f) => {
+          if (!f.num_cuotas || !f.fecha_inicio) return f;
+          const inicio = new Date(f.fecha_inicio);
+          const mesesTranscurridos =
+            (hoy.getFullYear() - inicio.getFullYear()) * 12 +
+            (hoy.getMonth() - inicio.getMonth());
+          return { ...f, cuota_actual: Math.min(mesesTranscurridos + 1, f.num_cuotas) };
+        });
+
+      setFacturas(enriched);
     } finally {
       setLoading(false);
     }

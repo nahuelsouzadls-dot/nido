@@ -68,6 +68,12 @@ export type Factura = {
   activa: boolean;
   scope: Scope;
   created_at: string;
+  // cuotas (opcionales — null en facturas regulares)
+  num_cuotas?: number | null;
+  tarjeta?: string | null;
+  fecha_inicio?: string | null;
+  // computed by hook
+  cuota_actual?: number;
   // joined
   responsable?: Perfil;
   pago_actual?: FacturaPago;
