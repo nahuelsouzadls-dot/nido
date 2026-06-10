@@ -23,10 +23,11 @@ import { PrivacyBadge } from '@/components/ui/PrivacyBadge';
 import { DisponibleHeroCard } from '@/components/DisponibleHeroCard';
 import { MiniStatCard } from '@/components/MiniStatCard';
 import { MovimientoRow } from '@/components/MovimientoRow';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Avatar } from '@/components/ui/Avatar';
 import { useBalance } from '@/hooks/useBalance';
 import { formatMonto, formatMes } from '@/utils/format';
-import type { FacturaPago } from '@/types';
+import type { FacturaPago, Gasto } from '@/types';
 
 export default function BalanceScreen() {
   const { perfil, companero } = useAuthStore();
@@ -37,7 +38,7 @@ export default function BalanceScreen() {
   const mes = hoy.getMonth() + 1;
   const anio = hoy.getFullYear();
 
-  const { gastos, loading: loadingGastos, recargar: recargarGastos } = useGastos(mes, anio);
+  const { gastos, loading: loadingGastos, recargar: recargarGastos, eliminar: eliminarGasto } = useGastos(mes, anio);
   const { facturas, loading: loadingFacturas, recargar: recargarFacturas, pendientes } = useFacturas(mes, anio);
   const resumenPersonal = useResumenPersonal(mes, anio);
   const { movimientos } = useMovimientosPersonales(mes, anio);
@@ -51,6 +52,7 @@ export default function BalanceScreen() {
   const loading = loadingGastos || loadingFacturas;
 
   const [refreshing, setRefreshing] = useState(false);
+  const [gastoAEliminar, setGastoAEliminar] = useState<Gasto | null>(null);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -292,7 +294,12 @@ export default function BalanceScreen() {
               {gastos.map((g, i) => (
                 <View key={g.id}>
                   {i > 0 && <View style={[styles.gastoSep, { backgroundColor: 'rgba(30,10,16,0.06)' }]} />}
-                  <View style={styles.gastoRow}>
+                  <TouchableOpacity
+                    style={styles.gastoRow}
+                    onLongPress={() => setGastoAEliminar(g)}
+                    delayLongPress={400}
+                    activeOpacity={0.7}
+                  >
                     <View style={{ flex: 1 }}>
                       <RNText style={[styles.gastoDesc, { color: colors.textPrimary }]}>
                         {g.descripcion}
@@ -306,12 +313,25 @@ export default function BalanceScreen() {
                     <RNText style={[styles.gastoMonto, { color: colors.textPrimary }]}>
                       {formatMonto(g.monto)}
                     </RNText>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               ))}
             </View>
           </View>
         )}
+
+        <ConfirmDialog
+          visible={gastoAEliminar !== null}
+          titulo="Eliminar gasto"
+          descripcion={gastoAEliminar ? `¿Eliminás "${gastoAEliminar.descripcion}" de ${formatMonto(gastoAEliminar.monto)}?` : ''}
+          ctaPrimaria="Eliminar"
+          destructivo
+          onConfirmar={async () => {
+            if (gastoAEliminar) await eliminarGasto(gastoAEliminar.id);
+            setGastoAEliminar(null);
+          }}
+          onCancelar={() => setGastoAEliminar(null)}
+        />
 
         {gastos.length === 0 && pendientes.length === 0 && (
           <View style={styles.emptyContainer}>
