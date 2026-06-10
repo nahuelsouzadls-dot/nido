@@ -38,9 +38,18 @@ export async function crearGasto(gasto: {
   cuotas_grupo_id?: string | null;
   tarjeta?: string | null;
 }) {
+  // Only include cuota fields when they carry a value — inserts must work even if
+  // migration 009 hasn't been applied yet (adding null columns that don't exist errors).
+  const { cuota_numero, cuota_total, cuotas_grupo_id, tarjeta, ...base } = gasto;
+  const payload: Record<string, unknown> = { ...base };
+  if (cuota_numero != null) payload.cuota_numero = cuota_numero;
+  if (cuota_total != null) payload.cuota_total = cuota_total;
+  if (cuotas_grupo_id != null) payload.cuotas_grupo_id = cuotas_grupo_id;
+  if (tarjeta != null) payload.tarjeta = tarjeta;
+
   const { data, error } = await supabase
     .from('gastos')
-    .insert(gasto)
+    .insert(payload)
     .select(`
       *,
       categoria:categorias(*),

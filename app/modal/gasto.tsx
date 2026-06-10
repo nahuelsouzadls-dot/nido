@@ -21,6 +21,7 @@ import { PrivacyBadge } from '@/components/ui/PrivacyBadge';
 import { adjuntarFotoGasto, crearGasto } from '@/services/gastos';
 import { useAuthStore } from '@/store/auth';
 import { useGastos } from '@/hooks/useGastos';
+import { Toast } from '@/components/ui/Toast';
 import { supabase } from '@/lib/supabase';
 import type { Categoria, Scope } from '@/types';
 
@@ -68,6 +69,7 @@ export default function ModalGasto() {
   const [categoriasHogar, setCategoriasHogar] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(false);
   const [foto, setFoto] = useState<string | null>(fotoUri ?? null);
+  const [toast, setToast] = useState<{ visible: boolean; msg: string }>({ visible: false, msg: '' });
 
   // Cuotas
   const [esCuotas, setEsCuotas] = useState(false);
@@ -157,7 +159,11 @@ export default function ModalGasto() {
         if (foto && nuevo?.id) await adjuntarFotoGasto(nuevo.id, foto);
       }
 
-      router.back();
+      const msg = esCuotas && cuotas > 1
+        ? `${cuotas} cuotas registradas`
+        : 'Gasto registrado';
+      setToast({ visible: true, msg });
+      setTimeout(() => router.back(), 1200);
     } catch {
       Alert.alert('Error', 'No se pudo guardar el gasto. Intentá de nuevo.');
     } finally {
@@ -426,6 +432,14 @@ export default function ModalGasto() {
           </RNText>
         </TouchableOpacity>
       </View>
+
+      <Toast
+        visible={toast.visible}
+        mensaje={toast.msg}
+        tipo="success"
+        duracion={1000}
+        onHide={() => setToast({ visible: false, msg: '' })}
+      />
     </KeyboardAvoidingView>
   );
 }
