@@ -37,6 +37,11 @@ export type Gasto = {
   observaciones: string | null;
   scope: Scope;
   created_at: string;
+  // cuotas
+  cuota_numero: number | null;
+  cuota_total: number | null;
+  cuotas_grupo_id: string | null;
+  tarjeta: string | null;
   // joined
   categoria?: Categoria;
   perfil?: Perfil;

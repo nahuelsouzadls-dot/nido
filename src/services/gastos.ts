@@ -33,6 +33,10 @@ export async function crearGasto(gasto: {
   fecha: string;
   observaciones?: string | null;
   scope?: Scope;
+  cuota_numero?: number | null;
+  cuota_total?: number | null;
+  cuotas_grupo_id?: string | null;
+  tarjeta?: string | null;
 }) {
   const { data, error } = await supabase
     .from('gastos')

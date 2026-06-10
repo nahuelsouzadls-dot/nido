@@ -23,11 +23,15 @@ export function MovimientoRow({ movimiento, showSeparator }: Props) {
           <RNText style={[styles.desc, { color: colors.textPrimary }]}>
             {movimiento.descripcion}
           </RNText>
-          {movimiento.categoria && (
+          {movimiento.cuotaInfo ? (
+            <RNText style={[styles.cat, { color: colors.textSecondary }]}>
+              {movimiento.cuotaInfo}
+            </RNText>
+          ) : movimiento.categoria ? (
             <RNText style={[styles.cat, { color: colors.textSecondary }]}>
               {movimiento.categoria}
             </RNText>
-          )}
+          ) : null}
           <RNText style={[styles.fecha, { color: colors.textSecondary }]}>
             {formatFechaRelativa(movimiento.fecha)}
           </RNText>

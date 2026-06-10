@@ -22,6 +22,12 @@ export function GastoRow({ gasto, onPress, onLongPress }: Props) {
   const categoria = gasto.categoria?.nombre ?? 'Otros';
   const pagadorNombre = gasto.perfil?.nombre ?? 'Desconocido';
 
+  let cuotaInfo: string | undefined;
+  if (gasto.cuota_numero && gasto.cuota_total) {
+    cuotaInfo = `Cuota ${gasto.cuota_numero} de ${gasto.cuota_total}`;
+    if (gasto.tarjeta) cuotaInfo += ` · ${gasto.tarjeta}`;
+  }
+
   return (
     <TouchableOpacity
       style={[styles.container, { borderBottomColor: 'rgba(30,10,16,0.06)' }]}
@@ -35,6 +41,9 @@ export function GastoRow({ gasto, onPress, onLongPress }: Props) {
 
       <View style={styles.info}>
         <RNText style={[styles.descripcion, { color: colors.textPrimary }]}>{gasto.descripcion}</RNText>
+        {cuotaInfo ? (
+          <RNText style={[styles.cuota, { color: colors.primary }]}>{cuotaInfo}</RNText>
+        ) : null}
         <RNText style={[styles.meta, { color: colors.textSecondary }]}>
           {categoria} · {formatFechaRelativa(gasto.fecha)}
         </RNText>
@@ -72,6 +81,7 @@ const styles = StyleSheet.create({
   },
   info: { flex: 1, gap: 2 },
   descripcion: { fontFamily: 'Manrope_600SemiBold', fontSize: 11 },
+  cuota: { fontFamily: 'Manrope_500Medium', fontSize: 9 },
   meta: { fontFamily: 'Manrope_500Medium', fontSize: 9 },
   right: { alignItems: 'flex-end', gap: 3 },
   monto: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
