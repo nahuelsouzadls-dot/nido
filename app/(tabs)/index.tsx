@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View,
   ScrollView,
@@ -184,6 +185,13 @@ export default function HomeScreen() {
     await Promise.all([recargar(), resumenPersonal.recargar()]);
     setRefreshing(false);
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      recargar();
+      resumenPersonal.recargar();
+    }, [recargar, resumenPersonal.recargar]),
+  );
 
   const daysUntilNextDue = useMemo(() => {
     if (vencidas.length > 0) return 0;

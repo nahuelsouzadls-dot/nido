@@ -47,9 +47,9 @@ const MONTHS: Record<string, string> = {
   SEP: '09', OCT: '10', NOV: '11', DIC: '12',
 };
 
-type BankLine = { fecha: string; monto: number; descripcion: string };
+type BankLine = { fecha: string; monto: number; descripcion: string; tipo: 'gasto' | 'ingreso' };
 
-// Formato: 7 chars ID + 4 chars código + 7 chars fecha (DDMMMYY) + débito (hasta '.00') + crédito (hasta '.00') + descripción
+// Formato: 7 chars ID + 4 chars código + 7 chars fecha (DDMMMYY) + débito (17 chars) + crédito (15 chars) + descripción
 const BANK_LINE_RE = /^\d{7}[A-Z0-9]{4}(\d{2}[A-Z]{3}\d{2})(\d+\.\d{2})(\d+\.\d{2})(.+)$/;
 
 function parseAsciiDate(raw: string): string {
@@ -67,15 +67,15 @@ function parseBankStatement(text: string): BankLine[] {
     const match = line.match(BANK_LINE_RE);
     if (!match) continue;
 
-    const [, rawDate, rawDebit, , rawDesc] = match;
-    const debit = parseFloat(rawDebit);
-    if (debit <= 0) continue; // crédito o sin movimiento → skip
+    const [, rawDate, rawDebit, rawCredit, rawDesc] = match;
+    const debit  = parseFloat(rawDebit);
+    const credit = parseFloat(rawCredit);
 
-    results.push({
-      fecha: parseAsciiDate(rawDate),
-      monto: debit,
-      descripcion: rawDesc.trim(),
-    });
+    if (debit > 0) {
+      results.push({ fecha: parseAsciiDate(rawDate), monto: debit,  descripcion: rawDesc.trim(), tipo: 'gasto' });
+    } else if (credit > 0) {
+      results.push({ fecha: parseAsciiDate(rawDate), monto: credit, descripcion: rawDesc.trim(), tipo: 'ingreso' });
+    }
   }
 
   return results;
@@ -143,11 +143,15 @@ Deno.serve(async (req) => {
       const lines = parseBankStatement(text);
 
       if (lines.length === 0) {
-        await sendMessage(token, chatId, '⚠️ Detecté un extracto pero no encontré débitos.');
+        await sendMessage(token, chatId, '⚠️ Detecté un extracto pero no encontré movimientos.');
         return new Response('ok', { status: 200 });
       }
 
-      // Traer facturas activas para detectar solapamientos
+      const fechas  = lines.map((l) => l.fecha);
+      const fechaMin = fechas.reduce((a, b) => (a < b ? a : b));
+      const fechaMax = fechas.reduce((a, b) => (a > b ? a : b));
+
+      // Traer facturas activas para detectar solapamientos en gastos
       const { data: facturas } = await supabase
         .from('facturas')
         .select('nombre')
@@ -158,87 +162,110 @@ Deno.serve(async (req) => {
         f.nombre.toLowerCase().replace(/\s+/g, ''),
       );
 
-      // Traer gastos existentes del usuario en el rango de fechas del extracto
-      const fechas = lines.map((l) => l.fecha);
-      const fechaMin = fechas.reduce((a, b) => (a < b ? a : b));
-      const fechaMax = fechas.reduce((a, b) => (a > b ? a : b));
+      // Sets de claves "monto|fecha" para deduplicar gastos e ingresos
+      const [{ data: gastosExistentes }, { data: ingresosExistentes }] = await Promise.all([
+        supabase.from('gastos').select('monto, fecha').eq('pagado_por', userId).gte('fecha', fechaMin).lte('fecha', fechaMax),
+        supabase.from('ingresos').select('monto, fecha').eq('user_id', userId).gte('fecha', fechaMin).lte('fecha', fechaMax),
+      ]);
 
-      const { data: gastosExistentes } = await supabase
-        .from('gastos')
-        .select('monto, fecha')
-        .eq('pagado_por', userId)
-        .gte('fecha', fechaMin)
-        .lte('fecha', fechaMax);
-
-      // Set de claves "monto|fecha" para lookup O(1)
       const gastosSet = new Set(
         (gastosExistentes ?? []).map((g: { monto: number; fecha: string }) =>
           `${parseFloat(String(g.monto)).toFixed(2)}|${g.fecha}`,
         ),
       );
+      const ingresosSet = new Set(
+        (ingresosExistentes ?? []).map((i: { monto: number; fecha: string }) =>
+          `${parseFloat(String(i.monto)).toFixed(2)}|${i.fecha}`,
+        ),
+      );
 
-      const nuevas: BankLine[] = [];
+      const nuevosGastos:   BankLine[] = [];
+      const nuevosIngresos: BankLine[] = [];
       const omitidas: string[] = [];
 
       for (const line of lines) {
-        const key = `${line.monto.toFixed(2)}|${line.fecha}`;
+        const key      = `${line.monto.toFixed(2)}|${line.fecha}`;
         const descNorm = line.descripcion.toLowerCase().replace(/\s+/g, '');
 
-        // ¿Ya existe este gasto?
-        if (gastosSet.has(key)) {
-          omitidas.push(`ya registrado: ${line.descripcion.slice(0, 25)}`);
-          continue;
+        if (line.tipo === 'gasto') {
+          if (gastosSet.has(key)) { omitidas.push(`ya registrado: ${line.descripcion.slice(0, 25)}`); continue; }
+          const facturaMatch = facturaNames.find((fn) => descNorm.includes(fn) || fn.includes(descNorm.slice(0, 4)));
+          if (facturaMatch) {
+            omitidas.push(`factura "${facturas!.find((f: { nombre: string }) => f.nombre.toLowerCase().replace(/\s+/g, '') === facturaMatch)?.nombre}"`);
+            continue;
+          }
+          nuevosGastos.push(line);
+        } else {
+          if (ingresosSet.has(key)) { omitidas.push(`ingreso ya registrado: ${line.descripcion.slice(0, 25)}`); continue; }
+          nuevosIngresos.push(line);
         }
-
-        // ¿Solapamiento con una factura?
-        const facturaMatch = facturaNames.find(
-          (fn) => descNorm.includes(fn) || fn.includes(descNorm.slice(0, 4)),
-        );
-        if (facturaMatch) {
-          omitidas.push(`factura "${facturas!.find((f: { nombre: string }) => f.nombre.toLowerCase().replace(/\s+/g, '') === facturaMatch)?.nombre}": ${line.descripcion.slice(0, 20)}`);
-          continue;
-        }
-
-        nuevas.push(line);
       }
 
-      if (nuevas.length === 0) {
+      if (nuevosGastos.length === 0 && nuevosIngresos.length === 0) {
         const detalle = omitidas.map((o) => `  • ${o}`).join('\n');
-        await sendMessage(token, chatId, `ℹ️ Todos los movimientos ya estaban registrados o son facturas de Nido.\n\n${detalle}`);
+        await sendMessage(token, chatId, `ℹ️ Todo ya estaba registrado.\n\n${detalle}`);
         return new Response('ok', { status: 200 });
       }
 
-      const rows = nuevas.map((l) => ({
-        hogar_id:        hogarId,
-        pagado_por:      userId,
-        monto:           l.monto,
-        descripcion:     l.descripcion,
-        fecha:           l.fecha,
-        scope:           'personal',
-        categoria_id:    null,
-        categoria_texto: detectCategory(l.descripcion),
-      }));
+      // Insertar gastos e ingresos en paralelo
+      const inserts: Promise<{ error: unknown }>[] = [];
 
-      const { error } = await supabase.from('gastos').insert(rows);
+      if (nuevosGastos.length > 0) {
+        inserts.push(supabase.from('gastos').insert(
+          nuevosGastos.map((l) => ({
+            hogar_id:        hogarId,
+            pagado_por:      userId,
+            monto:           l.monto,
+            descripcion:     l.descripcion,
+            fecha:           l.fecha,
+            scope:           'personal',
+            categoria_id:    null,
+            categoria_texto: detectCategory(l.descripcion),
+          })),
+        ));
+      }
 
-      if (error) {
-        console.error('Supabase insert error:', error);
-        await sendMessage(token, chatId, '⚠️ Error al guardar los gastos. Intentá de nuevo.');
+      if (nuevosIngresos.length > 0) {
+        inserts.push(supabase.from('ingresos').insert(
+          nuevosIngresos.map((l) => ({
+            user_id:     userId,
+            hogar_id:    hogarId,
+            monto:       l.monto,
+            descripcion: l.descripcion,
+            categoria:   null,
+            fecha:       l.fecha,
+          })),
+        ));
+      }
+
+      const results = await Promise.all(inserts);
+      const insertError = results.find((r) => r.error);
+      if (insertError) {
+        console.error('Insert error:', insertError.error);
+        await sendMessage(token, chatId, '⚠️ Error al guardar algunos movimientos. Intentá de nuevo.');
         return new Response('ok', { status: 200 });
       }
 
-      const total = nuevas.reduce((acc, l) => acc + l.monto, 0);
-      const resumen = nuevas
-        .map((l) => `  • $${l.monto.toFixed(2)} ${l.descripcion.slice(0, 30)}`)
-        .join('\n');
+      let reply = '';
 
-      let reply = `✅ <b>${nuevas.length} gasto${nuevas.length > 1 ? 's' : ''} registrado${nuevas.length > 1 ? 's' : ''}</b>\n\n${resumen}\n\n💰 Total: $${total.toFixed(2)}`;
+      if (nuevosGastos.length > 0) {
+        const totalGastos = nuevosGastos.reduce((acc, l) => acc + l.monto, 0);
+        const resumenGastos = nuevosGastos.map((l) => `  • $${l.monto.toFixed(2)} ${l.descripcion.slice(0, 28)}`).join('\n');
+        reply += `💸 <b>${nuevosGastos.length} gasto${nuevosGastos.length > 1 ? 's' : ''}</b>\n${resumenGastos}\n<b>Total: $${totalGastos.toFixed(2)}</b>`;
+      }
+
+      if (nuevosIngresos.length > 0) {
+        const totalIngresos = nuevosIngresos.reduce((acc, l) => acc + l.monto, 0);
+        const resumenIngresos = nuevosIngresos.map((l) => `  • $${l.monto.toFixed(2)} ${l.descripcion.slice(0, 28)}`).join('\n');
+        if (reply) reply += '\n\n';
+        reply += `💰 <b>${nuevosIngresos.length} ingreso${nuevosIngresos.length > 1 ? 's' : ''}</b>\n${resumenIngresos}\n<b>Total: $${totalIngresos.toFixed(2)}</b>`;
+      }
 
       if (omitidas.length > 0) {
-        reply += `\n\n<i>Omitidos (${omitidas.length}): ${omitidas.map((o) => o.split(':')[0]).join(', ')}</i>`;
+        reply += `\n\n<i>Omitidos (${omitidas.length})</i>`;
       }
 
-      await sendMessage(token, chatId, reply);
+      await sendMessage(token, chatId, `✅ <b>Registrado</b>\n\n${reply}`);
       return new Response('ok', { status: 200 });
     }
 

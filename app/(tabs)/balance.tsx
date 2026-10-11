@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View,
   ScrollView,
@@ -43,10 +44,14 @@ export default function BalanceScreen() {
   const resumenPersonal = useResumenPersonal(mes, anio);
   const { movimientos } = useMovimientosPersonales(mes, anio);
 
-  // Pagos de facturas del hogar con monto y pagador definidos — input para useBalance
+  // Pagos de facturas del hogar — usa factura.monto como fallback si el pago no registró monto propio
   const facturasPagadasBalance = facturas
-    .map((f) => f.pago_actual)
-    .filter((p): p is FacturaPago => p != null && p.estado === 'pagada' && p.pagado_por != null && p.monto != null);
+    .filter((f) => f.pago_actual?.estado === 'pagada' && f.pago_actual?.pagado_por != null)
+    .map((f) => ({
+      ...f.pago_actual!,
+      monto: f.pago_actual!.monto ?? f.monto ?? null,
+    }))
+    .filter((p): p is FacturaPago => p.monto != null);
 
   const balance = useBalance(gastos, facturasPagadasBalance);
   const loading = loadingGastos || loadingFacturas;
@@ -64,6 +69,14 @@ export default function BalanceScreen() {
     setRefreshing(false);
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      recargarGastos();
+      recargarFacturas();
+      resumenPersonal.recargar();
+    }, [recargarGastos, recargarFacturas, resumenPersonal.recargar]),
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
@@ -77,8 +90,8 @@ export default function BalanceScreen() {
   // Compute total
   const totalGastos = gastos.reduce((sum, g) => sum + g.monto, 0);
   const facturasPagadasMonto = facturas
-    .filter((f) => f.pago_actual?.estado === 'pagada' && f.pago_actual?.monto)
-    .reduce((sum, f) => sum + (f.pago_actual?.monto ?? 0), 0);
+    .filter((f) => f.pago_actual?.estado === 'pagada')
+    .reduce((sum, f) => sum + (f.pago_actual?.monto ?? f.monto ?? 0), 0);
   const totalMes = totalGastos + facturasPagadasMonto;
 
   // Simple progress — ratio of paid vs total invoices
