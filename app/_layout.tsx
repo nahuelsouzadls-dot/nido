@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
@@ -21,6 +21,7 @@ function AppContent() {
   const { setSession, setLoading, cargarPerfil, perfil, loading } = useAuthStore();
   const colors = useColors();
   const { isDark } = useTheme();
+  const router = useRouter();
 
   const [fontsLoaded] = useFonts({
     Manrope_500Medium,
@@ -35,9 +36,9 @@ function AppContent() {
         setSession(session);
         return;
       }
-      // Durante recovery, solo guardamos la sesión; callback.tsx redirige a reset-password.
       if (event === 'PASSWORD_RECOVERY') {
         setSession(session);
+        router.replace('/auth/reset-password');
         return;
       }
       setSession(session);
