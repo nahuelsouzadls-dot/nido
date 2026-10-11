@@ -21,7 +21,6 @@ import { useResumenPersonal } from '@/hooks/useResumenPersonal';
 import { useMovimientosPersonales } from '@/hooks/useMovimientosPersonales';
 import { ContextSelectorBar } from '@/components/ui/ContextSelectorBar';
 import { PrivacyBadge } from '@/components/ui/PrivacyBadge';
-import { DisponibleHeroCard } from '@/components/DisponibleHeroCard';
 import { MiniStatCard } from '@/components/MiniStatCard';
 import { MovimientoRow } from '@/components/MovimientoRow';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -129,42 +128,11 @@ export default function BalanceScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.personal} />}
         >
-          <DisponibleHeroCard
-            disponible={resumenPersonal.disponible}
-            totalIngresos={resumenPersonal.totalIngresos}
+          <MiniStatCard
+            label="Gasté este mes"
+            value={resumenPersonal.totalGastos}
+            count={`${resumenPersonal.gastos.length} movimiento${resumenPersonal.gastos.length !== 1 ? 's' : ''}`}
           />
-          <View style={styles.miniGrid}>
-            <MiniStatCard
-              label="Cobré"
-              value={resumenPersonal.totalIngresos}
-              valueColor={colors.sage}
-              count={`${resumenPersonal.ingresos.length} ingreso${resumenPersonal.ingresos.length !== 1 ? 's' : ''}`}
-            />
-            <MiniStatCard
-              label="Gasté"
-              value={resumenPersonal.totalGastos}
-              count={`${resumenPersonal.gastos.length} movimiento${resumenPersonal.gastos.length !== 1 ? 's' : ''}`}
-            />
-          </View>
-          {/* Barra de progreso */}
-          {resumenPersonal.totalIngresos > 0 && (
-            <View style={styles.progressSection}>
-              <View style={styles.progressRow}>
-                <RNText style={[styles.progressLabel, { color: colors.textSecondary }]}>
-                  Gastado del ingreso
-                </RNText>
-                <RNText style={[styles.progressCount, { color: colors.personal }]}>
-                  {resumenPersonal.pctGastado}%
-                </RNText>
-              </View>
-              <View style={[styles.progressTrack, { backgroundColor: colors.personalLight }]}>
-                <View style={[
-                  styles.progressFill,
-                  { width: `${resumenPersonal.pctGastado}%` as `${number}%`, backgroundColor: colors.personal },
-                ]} />
-              </View>
-            </View>
-          )}
           {/* Movimientos */}
           {movimientos.length > 0 && (
             <View style={styles.gastosSection}>
