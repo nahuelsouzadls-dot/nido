@@ -26,15 +26,14 @@ import type { Factura, Gasto } from '@/types';
 // ─── Colores por categoría ────────────────────────────────────────────────────
 
 const CAT_COLORS: Record<string, string> = {
-  Supermercado: '#4A90D9',
-  Hogar:        '#7B68EE',
-  Servicios:    '#50C878',
-  Transporte:   '#FFB347',
-  Mascotas:     '#FF6B9D',
-  Salidas:      '#FF7F50',
-  Salud:        '#20B2AA',
-  Reembolso:    '#A8D5A2',
-  Otros:        '#A9A9A9',
+  Comida:    '#F4A226',
+  Salidas:   '#FF7F50',
+  Hogar:     '#7B68EE',
+  Servicios: '#4A90D9',
+  Transporte:'#20B2AA',
+  Mascotas:  '#FF6B9D',
+  Salud:     '#50C878',
+  Otros:     '#A9A9A9',
 };
 
 function catColor(name: string): string {
@@ -99,6 +98,17 @@ function SpendingCard({ totalGastos, gastos }: { totalGastos: number; gastos: Ga
 
       {breakdown.length > 0 ? (
         <>
+          {/* Insight: categoría dominante */}
+          {breakdown[0] && (
+            <RNText style={[sStyles.insight, { color: colors.textSecondary }]}>
+              Tu mayor gasto fue{' '}
+              <RNText style={{ color: catColor(breakdown[0][0]), fontFamily: 'Manrope_700Bold' }}>
+                {breakdown[0][0]}
+              </RNText>
+              {' '}· {Math.round((breakdown[0][1] / totalGastos) * 100)}% del total
+            </RNText>
+          )}
+
           {/* Barra apilada por categoría */}
           <View style={sStyles.stackedBar}>
             {breakdown.map(([cat, monto], i) => {
@@ -162,6 +172,7 @@ const sStyles = StyleSheet.create({
   catName: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, flex: 1 },
   catMonto: { fontFamily: 'Manrope_500Medium', fontSize: 11 },
   catPct: { fontFamily: 'Manrope_800ExtraBold', fontSize: 12, width: 36, textAlign: 'right' },
+  insight: { fontFamily: 'Manrope_500Medium', fontSize: 11, lineHeight: 16 },
   emptyWrap: { alignItems: 'center', paddingVertical: 20, gap: 8 },
   emptyText: { fontFamily: 'Manrope_500Medium', fontSize: 12 },
 });

@@ -11,42 +11,50 @@ const TELEGRAM_API = 'https://api.telegram.org/bot';
 // ─── Categorías ──────────────────────────────────────────────────────────────
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  Supermercado: [
-    'super', 'supermercado', 'tienda inglesa', 'devoto', 'ta ta', 'tata', 'geant',
-    'géant', 'el dorado', 'multiahorro', 'macromercado', 'stock ', 'disco', 'jumbo',
-    'carrefour', 'verduleria', 'almacen', 'mercado', 'minimarket', 'feria',
+  // Todo lo alimenticio junto: supermercado + delivery + restaurantes
+  Comida: [
+    // supermercados Uruguay
+    'tienda inglesa', 'devoto', 'ta ta', 'tata', 'geant', 'géant', 'el dorado',
+    'multiahorro', 'macromercado', 'stock ', 'disco', 'jumbo', 'carrefour',
+    'verduleria', 'almacen', 'feria', 'supermercado', 'minimarket',
+    // delivery
+    'pedidosya', 'rappi', 'frog', 'delivery',
+    // restaurantes y comida rápida
+    'pizza', 'resto', 'restaurant', 'restaurante', 'almuerzo', 'cena', 'desayuno',
+    'mcdonald', 'mcdonalds', 'burger', 'sushi', 'parrilla', 'cantina', 'chivito',
+    'milanesa', 'empanadas', 'medialunas', 'subway', 'wendys', 'starbucks',
+    'freddo', 'grido', 'heladeria', 'helado', 'pasteleria', 'confiteria', 'cafeteria',
+    'cafe', 'café',
+  ],
+  // Salidas: lo social, boliche, copas
+  Salidas: [
+    'coca', 'cerveza', 'bar ', 'cerveceria', 'cervecería', 'cervecerí',
+    'boliche', 'pub', 'copet', 'kiosco', 'kiosko', 'snack', 'torta',
   ],
   Hogar: [
-    'ferreteria', 'limpieza', 'pintura', 'mueble', 'deco', 'sodimac', 'easy',
-    'electro', 'tricot', 'equilicua', 'ibirapita', 'ferretería',
+    'ferreteria', 'ferretería', 'limpieza', 'pintura', 'mueble', 'deco',
+    'sodimac', 'easy', 'electro', 'tricot', 'equilicua', 'ibirapita',
   ],
   Servicios: [
     'ute', 'ose', 'antel', 'movistar', 'claro', 'netflix', 'spotify', 'disney',
-    'hbo', 'amazon', 'apple', 'google', 'microsoft', 'icloud', 'directv', 'cablevision',
-    'flow ', 'adobe', 'luz', 'agua', 'gas', 'internet', 'telefono', 'teléfono',
-    'streaming', 'suscripcion', 'suscripción', 'debito automatico', 'deb aut',
-    'pago serv', 'pago automatico', 'pago auto',
+    'hbo', 'amazon', 'apple', 'google', 'microsoft', 'icloud', 'directv',
+    'cablevision', 'flow ', 'adobe', 'luz', 'agua', 'gas', 'internet',
+    'telefono', 'teléfono', 'streaming', 'suscripcion', 'suscripción',
+    'debito automatico', 'deb aut', 'pago serv', 'pago automatico', 'pago auto',
   ],
   Transporte: [
     'uber', 'cabify', 'taxi', 'cutcsa', 'stm', 'coata', 'copsa', 'omnibus',
     'nafta', 'combustible', 'shell', 'ypf', 'petrobras', 'ancap', 'peaje',
-    'ruta', 'aeropuerto', 'aerolinea', 'latam', 'jetsmart', 'pluna',
+    'ruta', 'aeropuerto', 'aerolinea', 'latam', 'jetsmart',
   ],
   Mascotas: [
     'veterinaria', 'vet ', 'vacuna', 'petshop', 'perro', 'gato', 'arena',
     'bocalan', 'bocalán',
   ],
-  Salidas: [
-    'cafe', 'café', 'pizza', 'coca', 'cerveza', 'resto', 'restaurant', 'restaurante',
-    'almuerzo', 'cena', 'desayuno', 'mcdonald', 'burger', 'sushi', 'bar ', 'helado',
-    'delivery', 'rappi', 'pedidosya', 'empanadas', 'wendys', 'starbucks', 'subway',
-    'freddo', 'grido', 'parrilla', 'cantina', 'cerveceria', 'heladeria', 'pasteleria',
-    'confiteria', 'kiosco', 'kiosko', 'snack', 'chivito', 'milanesa', 'torta',
-  ],
   Salud: [
-    'farmacia', 'medicamento', 'medicina', 'doctor', 'medico', 'médico', 'consulta',
-    'clinica', 'clínica', 'dentista', 'hospital', 'sanatorio', 'laboratorio',
-    'optica', 'mutualista', 'fonasa', 'asse', 'bps', 'medicina prepaga',
+    'farmacia', 'medicamento', 'medicina', 'doctor', 'medico', 'médico',
+    'consulta', 'clinica', 'clínica', 'dentista', 'hospital', 'sanatorio',
+    'laboratorio', 'optica', 'mutualista', 'fonasa', 'asse', 'bps',
   ],
 };
 
