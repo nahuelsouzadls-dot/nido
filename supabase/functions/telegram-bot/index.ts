@@ -11,13 +11,43 @@ const TELEGRAM_API = 'https://api.telegram.org/bot';
 // ─── Categorías ──────────────────────────────────────────────────────────────
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  Supermercado: ['super', 'supermercado', 'coto', 'disco', 'jumbo', 'carrefour', 'dia', 'verduleria', 'almacen', 'mercado', 'chino'],
-  Hogar:        ['ferreteria', 'limpieza', 'pintura', 'mueble', 'deco', 'ikea', 'homecenter'],
-  Servicios:    ['luz', 'gas', 'agua', 'internet', 'telefono', 'streaming', 'spotify', 'netflix', 'suscripcion', 'suscripción'],
-  Transporte:   ['uber', 'taxi', 'sube', 'colectivo', 'remis', 'nafta', 'combustible', 'tren', 'subte', 'peaje'],
-  Mascotas:     ['veterinaria', 'vet', 'vacuna', 'pet', 'perro', 'gato', 'arena'],
-  Salidas:      ['cafe', 'café', 'pizza', 'coca', 'cerveza', 'resto', 'restaurant', 'restaurante', 'almuerzo', 'cena', 'desayuno', 'mcdonald', 'burger', 'sushi', 'bar', 'helado', 'delivery', 'rappi', 'pedidosya', 'medialunas', 'empanadas', 'facturas'],
-  Salud:        ['farmacia', 'medicamento', 'medicina', 'doctor', 'medico', 'médico', 'consulta', 'clinica', 'clínica', 'dentista', 'turno'],
+  Supermercado: [
+    'super', 'supermercado', 'tienda inglesa', 'devoto', 'ta ta', 'tata', 'geant',
+    'géant', 'el dorado', 'multiahorro', 'macromercado', 'stock ', 'disco', 'jumbo',
+    'carrefour', 'verduleria', 'almacen', 'mercado', 'minimarket', 'feria',
+  ],
+  Hogar: [
+    'ferreteria', 'limpieza', 'pintura', 'mueble', 'deco', 'sodimac', 'easy',
+    'electro', 'tricot', 'equilicua', 'ibirapita', 'ferretería',
+  ],
+  Servicios: [
+    'ute', 'ose', 'antel', 'movistar', 'claro', 'netflix', 'spotify', 'disney',
+    'hbo', 'amazon', 'apple', 'google', 'microsoft', 'icloud', 'directv', 'cablevision',
+    'flow ', 'adobe', 'luz', 'agua', 'gas', 'internet', 'telefono', 'teléfono',
+    'streaming', 'suscripcion', 'suscripción', 'debito automatico', 'deb aut',
+    'pago serv', 'pago automatico', 'pago auto',
+  ],
+  Transporte: [
+    'uber', 'cabify', 'taxi', 'cutcsa', 'stm', 'coata', 'copsa', 'omnibus',
+    'nafta', 'combustible', 'shell', 'ypf', 'petrobras', 'ancap', 'peaje',
+    'ruta', 'aeropuerto', 'aerolinea', 'latam', 'jetsmart', 'pluna',
+  ],
+  Mascotas: [
+    'veterinaria', 'vet ', 'vacuna', 'petshop', 'perro', 'gato', 'arena',
+    'bocalan', 'bocalán',
+  ],
+  Salidas: [
+    'cafe', 'café', 'pizza', 'coca', 'cerveza', 'resto', 'restaurant', 'restaurante',
+    'almuerzo', 'cena', 'desayuno', 'mcdonald', 'burger', 'sushi', 'bar ', 'helado',
+    'delivery', 'rappi', 'pedidosya', 'empanadas', 'wendys', 'starbucks', 'subway',
+    'freddo', 'grido', 'parrilla', 'cantina', 'cerveceria', 'heladeria', 'pasteleria',
+    'confiteria', 'kiosco', 'kiosko', 'snack', 'chivito', 'milanesa', 'torta',
+  ],
+  Salud: [
+    'farmacia', 'medicamento', 'medicina', 'doctor', 'medico', 'médico', 'consulta',
+    'clinica', 'clínica', 'dentista', 'hospital', 'sanatorio', 'laboratorio',
+    'optica', 'mutualista', 'fonasa', 'asse', 'bps', 'medicina prepaga',
+  ],
 };
 
 function detectCategory(description: string): string {
