@@ -21,7 +21,7 @@ import { useResumenPersonal } from '@/hooks/useResumenPersonal';
 import { Avatar } from '@/components/ui/Avatar';
 import { FAB } from '@/components/FAB';
 import { formatMonto, formatMes } from '@/utils/format';
-import type { Factura } from '@/types';
+import type { Factura, Gasto } from '@/types';
 
 // ─── Hero state logic ─────────────────────────────────────────────────────────
 
@@ -79,51 +79,58 @@ const bStyles = StyleSheet.create({
   btnText: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
 });
 
-// ─── PersonalSummaryCard ──────────────────────────────────────────────────────
+// ─── SpendingCard ─────────────────────────────────────────────────────────────
 
-type PersonalSummaryProps = {
-  totalIngresos: number;
-  totalGastos: number;
-  disponible: number;
-  pctGastado: number;
-};
-
-function PersonalSummaryCard({ totalIngresos, totalGastos, disponible, pctGastado }: PersonalSummaryProps) {
+function SpendingCard({ totalGastos, gastos }: { totalGastos: number; gastos: Gasto[] }) {
   const colors = useColors();
+
+  const breakdown = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const g of gastos) {
+      const cat = g.categoria?.nombre ?? g.categoria_texto ?? 'Otros';
+      map[cat] = (map[cat] ?? 0) + g.monto;
+    }
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [gastos]);
+
   return (
-    <View style={[pStyles.card, { backgroundColor: colors.cardPersonal, borderColor: colors.personalBorder }]}>
-      <RNText style={[pStyles.label, { color: colors.personal }]}>TU DISPONIBLE</RNText>
-      <RNText style={[pStyles.monto, { color: colors.personal }]}>{formatMonto(disponible)}</RNText>
-      <View style={[pStyles.sep, { backgroundColor: colors.personalBorder }]} />
-      <RNText style={[pStyles.row, { color: colors.textSecondary }]}>
-        Cobré{' '}
-        <RNText style={[pStyles.rowVal, { color: colors.textPrimary }]}>{formatMonto(totalIngresos)}</RNText>
-        {'  ·  '}
-        Gasté{' '}
-        <RNText style={[pStyles.rowVal, { color: colors.textPrimary }]}>{formatMonto(totalGastos)}</RNText>
-      </RNText>
-      {totalIngresos > 0 && (
-        <View style={styles.progressTrack}>
-          <View style={[
-            styles.progressFill,
-            {
-              width: `${pctGastado}%` as `${number}%`,
-              backgroundColor: pctGastado >= 90 ? colors.primaryWarn : colors.personal,
-            },
-          ]} />
-        </View>
+    <View style={[pStyles.card, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
+      <RNText style={[pStyles.label, { color: colors.textSecondary }]}>ESTE MES</RNText>
+      <RNText style={[pStyles.total, { color: colors.textPrimary }]}>{formatMonto(totalGastos)}</RNText>
+      {breakdown.length > 0 ? (
+        <>
+          <View style={[pStyles.sep, { backgroundColor: colors.borderSubtle }]} />
+          {breakdown.map(([cat, monto]) => {
+            const pct = totalGastos > 0 ? Math.round((monto / totalGastos) * 100) : 0;
+            return (
+              <View key={cat} style={pStyles.catRow}>
+                <RNText style={[pStyles.catName, { color: colors.textPrimary }]} numberOfLines={1}>{cat}</RNText>
+                <View style={[pStyles.barTrack, { backgroundColor: colors.borderSubtle }]}>
+                  <View style={[pStyles.barFill, { width: `${pct}%` as `${number}%`, backgroundColor: colors.primary }]} />
+                </View>
+                <RNText style={[pStyles.catPct, { color: colors.textSecondary }]}>{pct}%</RNText>
+              </View>
+            );
+          })}
+        </>
+      ) : (
+        <RNText style={[pStyles.empty, { color: colors.textSecondary }]}>Sin gastos registrados este mes</RNText>
       )}
     </View>
   );
 }
 
 const pStyles = StyleSheet.create({
-  card: { borderRadius: 16, borderWidth: 0.5, padding: 16, gap: 8 },
+  card: { borderRadius: 16, borderWidth: 0.5, padding: 16, gap: 10 },
   label: { fontFamily: 'Manrope_700Bold', fontSize: 10, letterSpacing: 0.8 },
-  monto: { fontFamily: 'Manrope_800ExtraBold', fontSize: 28, letterSpacing: -0.8 },
+  total: { fontFamily: 'Manrope_800ExtraBold', fontSize: 28, letterSpacing: -0.8 },
   sep: { height: 0.5 },
-  row: { fontFamily: 'Manrope_500Medium', fontSize: 13 },
-  rowVal: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
+  catRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  catName: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, width: 90 },
+  barTrack: { flex: 1, height: 5, borderRadius: 3, overflow: 'hidden' },
+  barFill: { height: 5, borderRadius: 3 },
+  catPct: { fontFamily: 'Manrope_700Bold', fontSize: 10, width: 30, textAlign: 'right' },
+  empty: { fontFamily: 'Manrope_500Medium', fontSize: 12 },
 });
 
 // ─── BillRow ──────────────────────────────────────────────────────────────────
@@ -257,13 +264,8 @@ export default function HomeScreen() {
           <BienvenidaCard onDismiss={() => setMostrarBienvenida(false)} />
         )}
 
-        {/* Resumen personal */}
-        <PersonalSummaryCard
-          totalIngresos={resumenPersonal.totalIngresos}
-          totalGastos={resumenPersonal.totalGastos}
-          disponible={resumenPersonal.disponible}
-          pctGastado={resumenPersonal.pctGastado}
-        />
+        {/* Gastos del mes */}
+        <SpendingCard totalGastos={resumenPersonal.totalGastos} gastos={resumenPersonal.gastos} />
 
         {/* Estado del hogar */}
         <View style={[styles.heroCard, { backgroundColor: hc.bg }]}>
@@ -362,10 +364,6 @@ const styles = StyleSheet.create({
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   avatares: { flexDirection: 'row', gap: -8 },
   refreshBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(30,10,16,0.06)' },
-
-  // PersonalSummaryCard — progress bar
-  progressTrack: { height: 5, borderRadius: 3, overflow: 'hidden', backgroundColor: 'rgba(15,110,86,0.15)' },
-  progressFill: { height: 5, borderRadius: 3 },
 
   // HeroCard
   heroCard: { borderRadius: 16, padding: 16, gap: 16 },

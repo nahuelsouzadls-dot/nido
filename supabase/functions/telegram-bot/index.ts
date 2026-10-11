@@ -67,14 +67,12 @@ function parseBankStatement(text: string): BankLine[] {
     const match = line.match(BANK_LINE_RE);
     if (!match) continue;
 
-    const [, rawDate, rawDebit, rawCredit, rawDesc] = match;
-    const debit  = parseFloat(rawDebit);
-    const credit = parseFloat(rawCredit);
+    const [, rawDate, rawDebit, , rawDesc] = match;
+    const debit = parseFloat(rawDebit);
 
+    // Solo registramos débitos — los ingresos se cargan manualmente desde la app
     if (debit > 0) {
-      results.push({ fecha: parseAsciiDate(rawDate), monto: debit,  descripcion: rawDesc.trim(), tipo: 'gasto' });
-    } else if (credit > 0) {
-      results.push({ fecha: parseAsciiDate(rawDate), monto: credit, descripcion: rawDesc.trim(), tipo: 'ingreso' });
+      results.push({ fecha: parseAsciiDate(rawDate), monto: debit, descripcion: rawDesc.trim(), tipo: 'gasto' });
     }
   }
 
@@ -162,104 +160,63 @@ Deno.serve(async (req) => {
         f.nombre.toLowerCase().replace(/\s+/g, ''),
       );
 
-      // Sets de claves "monto|fecha" para deduplicar gastos e ingresos
-      const [{ data: gastosExistentes }, { data: ingresosExistentes }] = await Promise.all([
-        supabase.from('gastos').select('monto, fecha').eq('pagado_por', userId).gte('fecha', fechaMin).lte('fecha', fechaMax),
-        supabase.from('ingresos').select('monto, fecha').eq('user_id', userId).gte('fecha', fechaMin).lte('fecha', fechaMax),
-      ]);
+      const { data: gastosExistentes } = await supabase
+        .from('gastos')
+        .select('monto, fecha')
+        .eq('pagado_por', userId)
+        .gte('fecha', fechaMin)
+        .lte('fecha', fechaMax);
 
       const gastosSet = new Set(
         (gastosExistentes ?? []).map((g: { monto: number; fecha: string }) =>
           `${parseFloat(String(g.monto)).toFixed(2)}|${g.fecha}`,
         ),
       );
-      const ingresosSet = new Set(
-        (ingresosExistentes ?? []).map((i: { monto: number; fecha: string }) =>
-          `${parseFloat(String(i.monto)).toFixed(2)}|${i.fecha}`,
-        ),
-      );
 
-      const nuevosGastos:   BankLine[] = [];
-      const nuevosIngresos: BankLine[] = [];
+      const nuevosGastos: BankLine[] = [];
       const omitidas: string[] = [];
 
       for (const line of lines) {
         const key      = `${line.monto.toFixed(2)}|${line.fecha}`;
         const descNorm = line.descripcion.toLowerCase().replace(/\s+/g, '');
 
-        if (line.tipo === 'gasto') {
-          if (gastosSet.has(key)) { omitidas.push(`ya registrado: ${line.descripcion.slice(0, 25)}`); continue; }
-          const facturaMatch = facturaNames.find((fn) => descNorm.includes(fn) || fn.includes(descNorm.slice(0, 4)));
-          if (facturaMatch) {
-            omitidas.push(`factura "${facturas!.find((f: { nombre: string }) => f.nombre.toLowerCase().replace(/\s+/g, '') === facturaMatch)?.nombre}"`);
-            continue;
-          }
-          nuevosGastos.push(line);
-        } else {
-          if (ingresosSet.has(key)) { omitidas.push(`ingreso ya registrado: ${line.descripcion.slice(0, 25)}`); continue; }
-          nuevosIngresos.push(line);
+        if (gastosSet.has(key)) { omitidas.push(`ya registrado: ${line.descripcion.slice(0, 25)}`); continue; }
+        const facturaMatch = facturaNames.find((fn) => descNorm.includes(fn) || fn.includes(descNorm.slice(0, 4)));
+        if (facturaMatch) {
+          omitidas.push(`factura "${facturas!.find((f: { nombre: string }) => f.nombre.toLowerCase().replace(/\s+/g, '') === facturaMatch)?.nombre}"`);
+          continue;
         }
+        nuevosGastos.push(line);
       }
 
-      if (nuevosGastos.length === 0 && nuevosIngresos.length === 0) {
+      if (nuevosGastos.length === 0) {
         const detalle = omitidas.map((o) => `  • ${o}`).join('\n');
         await sendMessage(token, chatId, `ℹ️ Todo ya estaba registrado.\n\n${detalle}`);
         return new Response('ok', { status: 200 });
       }
 
-      // Insertar gastos e ingresos en paralelo
-      const inserts: Promise<{ error: unknown }>[] = [];
+      const { error: insertError } = await supabase.from('gastos').insert(
+        nuevosGastos.map((l) => ({
+          hogar_id:        hogarId,
+          pagado_por:      userId,
+          monto:           l.monto,
+          descripcion:     l.descripcion,
+          fecha:           l.fecha,
+          scope:           'personal',
+          categoria_id:    null,
+          categoria_texto: detectCategory(l.descripcion),
+        })),
+      );
 
-      if (nuevosGastos.length > 0) {
-        inserts.push(supabase.from('gastos').insert(
-          nuevosGastos.map((l) => ({
-            hogar_id:        hogarId,
-            pagado_por:      userId,
-            monto:           l.monto,
-            descripcion:     l.descripcion,
-            fecha:           l.fecha,
-            scope:           'personal',
-            categoria_id:    null,
-            categoria_texto: detectCategory(l.descripcion),
-          })),
-        ));
-      }
-
-      if (nuevosIngresos.length > 0) {
-        inserts.push(supabase.from('ingresos').insert(
-          nuevosIngresos.map((l) => ({
-            user_id:     userId,
-            hogar_id:    hogarId,
-            monto:       l.monto,
-            descripcion: l.descripcion,
-            categoria:   null,
-            fecha:       l.fecha,
-          })),
-        ));
-      }
-
-      const results = await Promise.all(inserts);
-      const insertError = results.find((r) => r.error);
       if (insertError) {
-        console.error('Insert error:', insertError.error);
-        await sendMessage(token, chatId, '⚠️ Error al guardar algunos movimientos. Intentá de nuevo.');
+        console.error('Insert error:', insertError);
+        await sendMessage(token, chatId, '⚠️ Error al guardar los gastos. Intentá de nuevo.');
         return new Response('ok', { status: 200 });
       }
 
-      let reply = '';
-
-      if (nuevosGastos.length > 0) {
-        const totalGastos = nuevosGastos.reduce((acc, l) => acc + l.monto, 0);
-        const resumenGastos = nuevosGastos.map((l) => `  • $${l.monto.toFixed(2)} ${l.descripcion.slice(0, 28)}`).join('\n');
-        reply += `💸 <b>${nuevosGastos.length} gasto${nuevosGastos.length > 1 ? 's' : ''}</b>\n${resumenGastos}\n<b>Total: $${totalGastos.toFixed(2)}</b>`;
-      }
-
-      if (nuevosIngresos.length > 0) {
-        const totalIngresos = nuevosIngresos.reduce((acc, l) => acc + l.monto, 0);
-        const resumenIngresos = nuevosIngresos.map((l) => `  • $${l.monto.toFixed(2)} ${l.descripcion.slice(0, 28)}`).join('\n');
-        if (reply) reply += '\n\n';
-        reply += `💰 <b>${nuevosIngresos.length} ingreso${nuevosIngresos.length > 1 ? 's' : ''}</b>\n${resumenIngresos}\n<b>Total: $${totalIngresos.toFixed(2)}</b>`;
-      }
+      const totalGastos = nuevosGastos.reduce((acc, l) => acc + l.monto, 0);
+      const resumenGastos = nuevosGastos.map((l) => `  • $${l.monto.toFixed(2)} ${l.descripcion.slice(0, 28)}`).join('\n');
+      let reply = `💸 <b>${nuevosGastos.length} gasto${nuevosGastos.length > 1 ? 's' : ''}</b>\n${resumenGastos}\n<b>Total: $${totalGastos.toFixed(2)}</b>`;
 
       if (omitidas.length > 0) {
         reply += `\n\n<i>Omitidos (${omitidas.length})</i>`;

@@ -23,6 +23,18 @@ export async function getGastosMes(hogarId: string, mes: number, anio: number, s
   return data as Gasto[];
 }
 
+export async function getGastosPersonalesDesde(hogarId: string, userId: string, desde: string) {
+  const { data, error } = await supabase
+    .from('gastos')
+    .select('monto')
+    .eq('hogar_id', hogarId)
+    .eq('pagado_por', userId)
+    .eq('scope', 'personal')
+    .gte('fecha', desde);
+  if (error) throw error;
+  return (data as { monto: number }[]).reduce((sum, g) => sum + g.monto, 0);
+}
+
 export async function crearGasto(gasto: {
   hogar_id: string;
   categoria_id: string | null;

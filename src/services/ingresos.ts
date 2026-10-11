@@ -36,6 +36,17 @@ export async function crearIngreso(ingreso: {
   return data as Ingreso;
 }
 
+export async function getIngresosDesde(userId: string, hogarId: string, desde: string) {
+  const { data, error } = await supabase
+    .from('ingresos')
+    .select('monto')
+    .eq('user_id', userId)
+    .eq('hogar_id', hogarId)
+    .gte('fecha', desde);
+  if (error) throw error;
+  return (data as { monto: number }[]).reduce((sum, i) => sum + i.monto, 0);
+}
+
 export async function eliminarIngreso(id: string) {
   const { error } = await supabase.from('ingresos').delete().eq('id', id);
   if (error) throw error;

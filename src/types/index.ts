@@ -6,6 +6,8 @@ export type Perfil = {
   avatar_url: string | null;
   hogar_id: string | null;
   push_token: string | null;
+  saldo_base: number;
+  saldo_base_fecha: string | null;
   created_at: string;
 };
 
