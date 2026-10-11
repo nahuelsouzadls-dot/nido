@@ -35,6 +35,11 @@ function AppContent() {
         setSession(session);
         return;
       }
+      // Durante recovery, solo guardamos la sesión; callback.tsx redirige a reset-password.
+      if (event === 'PASSWORD_RECOVERY') {
+        setSession(session);
+        return;
+      }
       setSession(session);
       if (session) {
         cargarPerfil();
@@ -74,6 +79,7 @@ function AppContent() {
           <Stack.Screen name="modal/objetivo" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen name="modal/ingreso" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen name="modal/scan" options={{ presentation: 'fullScreenModal', headerShown: false }} />
+          <Stack.Screen name="auth/reset-password" />
         </Stack>
       </SpaceProvider>
     </GestureHandlerRootView>

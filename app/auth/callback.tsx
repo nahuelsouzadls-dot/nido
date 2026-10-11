@@ -30,21 +30,36 @@ export default function AuthCallback() {
       return;
     }
 
+    // Flujo implícito (hash): detectSessionInUrl lo procesa, pero chequeamos
+    // si es recovery para redirigir a la pantalla correcta.
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    if (hashParams.get('type') === 'recovery') {
+      router.replace('/auth/reset-password');
+      return;
+    }
+
     if (!code) {
-      // No hay code en la URL — puede venir por hash fragment (flujo implícito).
-      // detectSessionInUrl:true ya lo maneja; esperamos a que onAuthStateChange dispare.
+      // Sin code ni hash de recovery: detectSessionInUrl maneja el flujo implícito.
       setIntentando(false);
       return;
     }
 
-    // Flujo PKCE: intercambiamos el código explícitamente como respaldo,
-    // en caso de que detectSessionInUrl no lo haya procesado todavía.
+    // Flujo PKCE: suscribimos antes de exchangeCodeForSession para detectar
+    // PASSWORD_RECOVERY (el evento se dispara antes de que resuelva la promesa).
+    let isRecovery = false;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') isRecovery = true;
+    });
+
     supabase.auth
       .exchangeCodeForSession(code)
       .then(({ error: exchangeError }) => {
+        subscription.unsubscribe();
+        if (isRecovery) {
+          router.replace('/auth/reset-password');
+          return;
+        }
         if (exchangeError) {
-          // Verificamos si ya hay una sesión activa (puede que detectSessionInUrl
-          // lo haya procesado primero y el exchange falle por código ya usado).
           supabase.auth.getSession().then(({ data: { session } }) => {
             if (!session) {
               setError('El link de verificación expiró o ya fue utilizado.');
@@ -56,9 +71,12 @@ export default function AuthCallback() {
         }
       })
       .catch(() => {
+        subscription.unsubscribe();
         setError('Ocurrió un error al verificar el email.');
         setIntentando(false);
       });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {

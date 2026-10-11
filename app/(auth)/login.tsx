@@ -26,12 +26,27 @@ export default function LoginScreen() {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passFocused, setPassFocused] = useState(false);
   const [nombreFocused, setNombreFocused] = useState(false);
+  const [mostrarRecuperar, setMostrarRecuperar] = useState(false);
+  const [recuperarEmail, setRecuperarEmail] = useState('');
+  const [recuperarLoading, setRecuperarLoading] = useState(false);
+  const [recuperarExito, setRecuperarExito] = useState(false);
+  const [recuperarFocused, setRecuperarFocused] = useState(false);
 
   const getRedirectUrl = () => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       return `${window.location.origin}/auth/callback`;
     }
     return 'nido://auth/callback';
+  };
+
+  const handleRecuperar = async () => {
+    if (!recuperarEmail.trim()) return;
+    setRecuperarLoading(true);
+    await supabase.auth.resetPasswordForEmail(recuperarEmail.trim(), {
+      redirectTo: getRedirectUrl(),
+    });
+    setRecuperarLoading(false);
+    setRecuperarExito(true);
   };
 
   const handleSubmit = async () => {
@@ -73,6 +88,77 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
+
+  if (mostrarRecuperar) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+        <View style={styles.confirmacion}>
+          {recuperarExito ? (
+            <>
+              <View style={[styles.confirmIcon, { backgroundColor: 'rgba(107,45,62,0.08)' }]}>
+                <MaterialCommunityIcons name="email-outline" size={28} color={colors.primary} />
+              </View>
+              <RNText style={[styles.confirmTitle, { color: colors.textPrimary }]}>
+                Revisá tu email
+              </RNText>
+              <RNText style={[styles.confirmSubtitle, { color: colors.textSecondary }]}>
+                Si existe una cuenta asociada a{'\n'}
+                <RNText style={[styles.confirmEmail, { color: colors.textPrimary }]}>{recuperarEmail}</RNText>
+                {'\n'}te enviamos el link para restablecer tu contraseña.
+              </RNText>
+              <TouchableOpacity onPress={() => { setMostrarRecuperar(false); setRecuperarExito(false); setRecuperarEmail(''); }}>
+                <RNText style={[styles.link, { color: colors.primary }]}>Volver al inicio de sesión</RNText>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={[styles.confirmIcon, { backgroundColor: 'rgba(107,45,62,0.08)' }]}>
+                <MaterialCommunityIcons name="lock-reset" size={28} color={colors.primary} />
+              </View>
+              <RNText style={[styles.confirmTitle, { color: colors.textPrimary }]}>
+                Recuperar contraseña
+              </RNText>
+              <RNText style={[styles.confirmSubtitle, { color: colors.textSecondary }]}>
+                Ingresá tu email y te enviamos un link para crear una nueva contraseña.
+              </RNText>
+              <TextInput
+                style={[styles.inputRecuperar, {
+                  backgroundColor: recuperarFocused ? 'rgba(255,255,255,0.85)' : colors.card,
+                  borderColor: recuperarFocused ? colors.primary : colors.borderSubtle,
+                  color: colors.textPrimary,
+                }]}
+                placeholder="Tu email"
+                placeholderTextColor={colors.textSecondary}
+                value={recuperarEmail}
+                onChangeText={setRecuperarEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoFocus
+                returnKeyType="send"
+                onSubmitEditing={handleRecuperar}
+                onFocus={() => setRecuperarFocused(true)}
+                onBlur={() => setRecuperarFocused(false)}
+              />
+              <TouchableOpacity
+                style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: recuperarLoading ? 0.6 : 1, width: '100%' }]}
+                onPress={handleRecuperar}
+                disabled={recuperarLoading}
+                activeOpacity={0.8}
+              >
+                <RNText style={styles.primaryBtnText}>
+                  {recuperarLoading ? 'Enviando...' : 'Enviar link'}
+                </RNText>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setMostrarRecuperar(false)}>
+                <RNText style={[styles.link, { color: colors.primary }]}>Volver al inicio de sesión</RNText>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (confirmacionPendiente) {
     return (
@@ -188,7 +274,7 @@ export default function LoginScreen() {
                 onBlur={() => setPassFocused(false)}
               />
               {!esRegistro && (
-                <TouchableOpacity style={styles.forgotRow}>
+                <TouchableOpacity style={styles.forgotRow} onPress={() => { setMostrarRecuperar(true); setRecuperarEmail(email); }}>
                   <RNText style={[styles.forgotText, { color: colors.primary }]}>
                     Olvidé mi contraseña
                   </RNText>
@@ -282,4 +368,10 @@ const styles = StyleSheet.create({
   confirmEmail: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
   confirmHint: { fontFamily: 'Manrope_500Medium', fontSize: 10, textAlign: 'center' },
   link: { fontFamily: 'Manrope_600SemiBold', fontSize: 12 },
+  inputRecuperar: {
+    borderRadius: 12, borderWidth: 0.5,
+    paddingHorizontal: 13, paddingVertical: 12,
+    fontFamily: 'Manrope_600SemiBold', fontSize: 12,
+    width: '100%',
+  },
 });
