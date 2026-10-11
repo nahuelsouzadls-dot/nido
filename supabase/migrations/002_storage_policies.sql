@@ -10,6 +10,7 @@
 -- ── BUCKET: archivos (fotos de recibos y comprobantes) ──
 
 -- Solo usuarios autenticados pueden subir archivos
+drop policy if exists "archivos_insert_autenticado" on storage.objects;
 create policy "archivos_insert_autenticado"
   on storage.objects for insert
   with check (
@@ -18,6 +19,7 @@ create policy "archivos_insert_autenticado"
   );
 
 -- Solo el dueño del archivo puede actualizarlo
+drop policy if exists "archivos_update_dueno" on storage.objects;
 create policy "archivos_update_dueno"
   on storage.objects for update
   using (
@@ -26,6 +28,7 @@ create policy "archivos_update_dueno"
   );
 
 -- Solo el dueño puede eliminarlo
+drop policy if exists "archivos_delete_dueno" on storage.objects;
 create policy "archivos_delete_dueno"
   on storage.objects for delete
   using (
@@ -34,12 +37,14 @@ create policy "archivos_delete_dueno"
   );
 
 -- Lectura pública (los archivos son URLs públicas compartidas dentro del hogar)
+drop policy if exists "archivos_select_public" on storage.objects;
 create policy "archivos_select_public"
   on storage.objects for select
   using (bucket_id = 'archivos');
 
 -- ── BUCKET: avatares (fotos de perfil) ──
 
+drop policy if exists "avatares_insert_autenticado" on storage.objects;
 create policy "avatares_insert_autenticado"
   on storage.objects for insert
   with check (
@@ -47,6 +52,7 @@ create policy "avatares_insert_autenticado"
     and auth.uid() is not null
   );
 
+drop policy if exists "avatares_update_dueno" on storage.objects;
 create policy "avatares_update_dueno"
   on storage.objects for update
   using (
@@ -54,6 +60,7 @@ create policy "avatares_update_dueno"
     and auth.uid() is not null
   );
 
+drop policy if exists "avatares_delete_dueno" on storage.objects;
 create policy "avatares_delete_dueno"
   on storage.objects for delete
   using (
@@ -61,6 +68,7 @@ create policy "avatares_delete_dueno"
     and auth.uid() is not null
   );
 
+drop policy if exists "avatares_select_public" on storage.objects;
 create policy "avatares_select_public"
   on storage.objects for select
   using (bucket_id = 'avatares');

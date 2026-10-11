@@ -170,28 +170,35 @@ $$;
 -- ============================================================
 
 -- Hogares: solo ven el suyo
+drop policy if exists "hogar_propio" on hogares;
 create policy "hogar_propio" on hogares
   for all using (id = mi_hogar_id());
 
 -- Perfiles: ven los de su hogar
+drop policy if exists "perfiles_hogar" on perfiles;
 create policy "perfiles_hogar" on perfiles
   for select using (hogar_id = mi_hogar_id() or id = auth.uid());
 
+drop policy if exists "perfil_propio_update" on perfiles;
 create policy "perfil_propio_update" on perfiles
   for update using (id = auth.uid());
 
+drop policy if exists "perfil_insert" on perfiles;
 create policy "perfil_insert" on perfiles
   for insert with check (id = auth.uid());
 
 -- Categorías
+drop policy if exists "categorias_hogar" on categorias;
 create policy "categorias_hogar" on categorias
   for all using (hogar_id = mi_hogar_id());
 
 -- Gastos
+drop policy if exists "gastos_hogar" on gastos;
 create policy "gastos_hogar" on gastos
   for all using (hogar_id = mi_hogar_id());
 
 -- Archivos de gastos
+drop policy if exists "gastos_archivos_hogar" on gastos_archivos;
 create policy "gastos_archivos_hogar" on gastos_archivos
   for all using (
     exists (
@@ -201,18 +208,22 @@ create policy "gastos_archivos_hogar" on gastos_archivos
   );
 
 -- Facturas
+drop policy if exists "facturas_hogar" on facturas;
 create policy "facturas_hogar" on facturas
   for all using (hogar_id = mi_hogar_id());
 
 -- Pagos de facturas
+drop policy if exists "facturas_pagos_hogar" on facturas_pagos;
 create policy "facturas_pagos_hogar" on facturas_pagos
   for all using (hogar_id = mi_hogar_id());
 
 -- Objetivos
+drop policy if exists "objetivos_hogar" on objetivos;
 create policy "objetivos_hogar" on objetivos
   for all using (hogar_id = mi_hogar_id());
 
 -- Aportes a objetivos
+drop policy if exists "objetivos_aportes_hogar" on objetivos_aportes;
 create policy "objetivos_aportes_hogar" on objetivos_aportes
   for all using (
     exists (
@@ -222,6 +233,7 @@ create policy "objetivos_aportes_hogar" on objetivos_aportes
   );
 
 -- Actividad
+drop policy if exists "actividad_hogar" on actividad;
 create policy "actividad_hogar" on actividad
   for all using (hogar_id = mi_hogar_id());
 
