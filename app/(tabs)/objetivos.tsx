@@ -72,6 +72,9 @@ export default function ObjetivosScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      <View style={styles.contextBar}>
+        <ContextSelectorBar />
+      </View>
 
       <ScrollView
         style={styles.scroll}
@@ -79,7 +82,6 @@ export default function ObjetivosScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={accentColor} />}
       >
-        <ContextSelectorBar />
 
         {objetivos.length === 0 ? (
           /* Empty state */
@@ -191,14 +193,15 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12,
   },
+  contextBar: { paddingHorizontal: 16, paddingBottom: 8 },
   labelCaps: {
     fontFamily: 'Manrope_700Bold',
-    fontSize: 8,
+    fontSize: 10,
     letterSpacing: 0.8,
   },
   title: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 20,
+    fontSize: 22,
     letterSpacing: -0.4,
   },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -234,9 +237,9 @@ const styles = StyleSheet.create({
   },
   emptySubtext: {
     fontFamily: 'Manrope_500Medium',
-    fontSize: 11,
+    fontSize: 13,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 18,
     paddingHorizontal: 24,
   },
   emptyBtn: {
@@ -247,7 +250,7 @@ const styles = StyleSheet.create({
   },
   emptyBtnText: {
     fontFamily: 'Manrope_700Bold',
-    fontSize: 12,
+    fontSize: 13,
     color: '#fff',
   },
   addCard: {
@@ -262,17 +265,17 @@ const styles = StyleSheet.create({
   },
   addCardTitle: {
     fontFamily: 'Manrope_700Bold',
-    fontSize: 13,
+    fontSize: 14,
   },
   addCardSubtext: {
     fontFamily: 'Manrope_500Medium',
-    fontSize: 10,
+    fontSize: 11,
     marginTop: 1,
   },
   seccion: { gap: 8 },
   seccionLabel: {
     fontFamily: 'Manrope_700Bold',
-    fontSize: 8,
+    fontSize: 10,
     letterSpacing: 0.8,
     marginTop: 8,
   },

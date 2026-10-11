@@ -88,7 +88,7 @@ export default function BalanceScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
-      {/* Header — outside scroll, same pattern as facturas/objetivos */}
+      {/* Header — fuera del scroll, toggle fijo */}
       <View style={styles.header}>
         <View>
           <RNText style={[styles.labelCaps, { color: colors.textSecondary }]}>
@@ -104,6 +104,9 @@ export default function BalanceScreen() {
           </TouchableOpacity>
         )}
       </View>
+      <View style={styles.contextBar}>
+        <ContextSelectorBar />
+      </View>
 
       {isPersonal ? (
         /* Modo personal */
@@ -113,7 +116,6 @@ export default function BalanceScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.personal} />}
         >
-          <ContextSelectorBar />
           <DisponibleHeroCard
             disponible={resumenPersonal.disponible}
             totalIngresos={resumenPersonal.totalIngresos}
@@ -188,7 +190,6 @@ export default function BalanceScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
       >
-        <ContextSelectorBar />
         {/* BalanceHeroCard */}
         <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.borderSubtle }]}>
           <RNText style={[styles.heroLabel, { color: colors.textSecondary }]}>
@@ -358,54 +359,55 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 16, gap: 16, paddingBottom: 100 },
   header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  contextBar: { paddingHorizontal: 16, paddingBottom: 4 },
   refreshBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(30,10,16,0.06)' },
   miniGrid: { flexDirection: 'row', gap: 10 },
-  labelCaps: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
-  title: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, letterSpacing: -0.4 },
+  labelCaps: { fontFamily: 'Manrope_700Bold', fontSize: 10, letterSpacing: 0.8 },
+  title: { fontFamily: 'Manrope_800ExtraBold', fontSize: 22, letterSpacing: -0.4 },
 
   // Hero card
   heroCard: { borderRadius: 14, borderWidth: 0.5, padding: 20, alignItems: 'center', gap: 10 },
-  heroLabel: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
-  heroTotal: { fontFamily: 'Manrope_800ExtraBold', fontSize: 22, letterSpacing: -0.8 },
+  heroLabel: { fontFamily: 'Manrope_700Bold', fontSize: 10, letterSpacing: 0.8 },
+  heroTotal: { fontFamily: 'Manrope_800ExtraBold', fontSize: 24, letterSpacing: -0.8 },
   heroBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  heroBadgeText: { fontFamily: 'Manrope_700Bold', fontSize: 9 },
+  heroBadgeText: { fontFamily: 'Manrope_700Bold', fontSize: 10 },
 
   // Breakdown
   breakdownCard: { borderRadius: 14, borderWidth: 0.5, padding: 12, gap: 10 },
-  breakdownLabel: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
+  breakdownLabel: { fontFamily: 'Manrope_700Bold', fontSize: 10, letterSpacing: 0.8 },
   breakdownRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  breakdownNombre: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, flex: 1 },
-  breakdownMonto: { fontFamily: 'Manrope_700Bold', fontSize: 13, letterSpacing: -0.3 },
+  breakdownNombre: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, flex: 1 },
+  breakdownMonto: { fontFamily: 'Manrope_700Bold', fontSize: 14, letterSpacing: -0.3 },
   breakdownSep: { height: 0.5 },
   deudaBox: { borderRadius: 10, borderWidth: 0.5, paddingHorizontal: 10, paddingVertical: 7 },
-  deudaText: { fontFamily: 'Manrope_700Bold', fontSize: 10, textAlign: 'center' },
+  deudaText: { fontFamily: 'Manrope_700Bold', fontSize: 11, textAlign: 'center' },
 
   // Progress
   progressSection: { gap: 8 },
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  progressLabel: { fontFamily: 'Manrope_500Medium', fontSize: 10 },
-  progressCount: { fontFamily: 'Manrope_700Bold', fontSize: 10 },
+  progressLabel: { fontFamily: 'Manrope_500Medium', fontSize: 11 },
+  progressCount: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
   progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: 6, borderRadius: 3 },
 
   // Pendientes box
   pendientesBox: { borderRadius: 11, borderWidth: 0.5, padding: 11, gap: 8 },
   pendientesHeader: { gap: 2 },
-  pendientesTitle: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
-  pendientesCount: { fontFamily: 'Manrope_500Medium', fontSize: 10 },
+  pendientesTitle: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
+  pendientesCount: { fontFamily: 'Manrope_500Medium', fontSize: 11 },
   pendienteSep: { height: 0.5 },
   pendienteRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
-  pendienteName: { fontFamily: 'Manrope_600SemiBold', fontSize: 11 },
-  pendienteMonto: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
+  pendienteName: { fontFamily: 'Manrope_600SemiBold', fontSize: 13 },
+  pendienteMonto: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
 
   // Gastos
   gastosSection: { gap: 10 },
-  gastosTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 13, letterSpacing: -0.3 },
+  gastosTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 15, letterSpacing: -0.3 },
   gastosList: { borderRadius: 14, borderWidth: 0.5, overflow: 'hidden' },
   gastoRow: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
   gastoDesc: { fontFamily: 'Manrope_600SemiBold', fontSize: 11 },
   gastoCat: { fontFamily: 'Manrope_500Medium', fontSize: 9, marginTop: 1 },
-  gastoMonto: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
+  gastoMonto: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
   gastoSep: { height: 0.5, marginLeft: 12 },
 
   // Empty

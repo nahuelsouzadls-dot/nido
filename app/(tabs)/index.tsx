@@ -14,14 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
-import { useSpace } from '@/context/SpaceContext';
 import { useAuthStore } from '@/store/auth';
 import { useFacturas } from '@/hooks/useFacturas';
 import { useResumenPersonal } from '@/hooks/useResumenPersonal';
 import { Avatar } from '@/components/ui/Avatar';
 import { FAB } from '@/components/FAB';
-import { ContextSelectorBar } from '@/components/ui/ContextSelectorBar';
-import { ResumenPersonalCard } from '@/components/ResumenPersonalCard';
 import { formatMonto, formatMes } from '@/utils/format';
 import type { Factura } from '@/types';
 
@@ -74,11 +71,58 @@ function BienvenidaCard({ onDismiss }: { onDismiss: () => void }) {
 
 const bStyles = StyleSheet.create({
   card: { borderRadius: 14, borderWidth: 0.5, padding: 14, gap: 6 },
-  label: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
-  titulo: { fontFamily: 'Manrope_800ExtraBold', fontSize: 13, letterSpacing: -0.3 },
-  texto: { fontFamily: 'Manrope_500Medium', fontSize: 10, lineHeight: 16 },
+  label: { fontFamily: 'Manrope_700Bold', fontSize: 10, letterSpacing: 0.8 },
+  titulo: { fontFamily: 'Manrope_800ExtraBold', fontSize: 15, letterSpacing: -0.3 },
+  texto: { fontFamily: 'Manrope_500Medium', fontSize: 12, lineHeight: 18 },
   btn: { borderRadius: 10, paddingVertical: 8, alignItems: 'center', marginTop: 4 },
-  btnText: { fontFamily: 'Manrope_700Bold', fontSize: 10 },
+  btnText: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
+});
+
+// ─── PersonalSummaryCard ──────────────────────────────────────────────────────
+
+type PersonalSummaryProps = {
+  totalIngresos: number;
+  totalGastos: number;
+  disponible: number;
+  pctGastado: number;
+};
+
+function PersonalSummaryCard({ totalIngresos, totalGastos, disponible, pctGastado }: PersonalSummaryProps) {
+  const colors = useColors();
+  return (
+    <View style={[pStyles.card, { backgroundColor: colors.cardPersonal, borderColor: colors.personalBorder }]}>
+      <RNText style={[pStyles.label, { color: colors.personal }]}>TU DISPONIBLE</RNText>
+      <RNText style={[pStyles.monto, { color: colors.personal }]}>{formatMonto(disponible)}</RNText>
+      <View style={[pStyles.sep, { backgroundColor: colors.personalBorder }]} />
+      <RNText style={[pStyles.row, { color: colors.textSecondary }]}>
+        Cobré{' '}
+        <RNText style={[pStyles.rowVal, { color: colors.textPrimary }]}>{formatMonto(totalIngresos)}</RNText>
+        {'  ·  '}
+        Gasté{' '}
+        <RNText style={[pStyles.rowVal, { color: colors.textPrimary }]}>{formatMonto(totalGastos)}</RNText>
+      </RNText>
+      {totalIngresos > 0 && (
+        <View style={styles.progressTrack}>
+          <View style={[
+            styles.progressFill,
+            {
+              width: `${pctGastado}%` as `${number}%`,
+              backgroundColor: pctGastado >= 90 ? colors.primaryWarn : colors.personal,
+            },
+          ]} />
+        </View>
+      )}
+    </View>
+  );
+}
+
+const pStyles = StyleSheet.create({
+  card: { borderRadius: 16, borderWidth: 0.5, padding: 16, gap: 8 },
+  label: { fontFamily: 'Manrope_700Bold', fontSize: 10, letterSpacing: 0.8 },
+  monto: { fontFamily: 'Manrope_800ExtraBold', fontSize: 28, letterSpacing: -0.8 },
+  sep: { height: 0.5 },
+  row: { fontFamily: 'Manrope_500Medium', fontSize: 13 },
+  rowVal: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
 });
 
 // ─── BillRow ──────────────────────────────────────────────────────────────────
@@ -116,7 +160,6 @@ function BillRow({ factura }: { factura: Factura }) {
 export default function HomeScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { activeContext } = useSpace();
   const { hogar, perfil, companero } = useAuthStore();
   const hoy = new Date();
   const mes = hoy.getMonth() + 1;
@@ -175,7 +218,7 @@ export default function HomeScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={activeContext === 'personal' ? colors.personal : colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
       >
         {/* Header */}
         <View style={styles.headerRow}>
@@ -191,7 +234,7 @@ export default function HomeScreen() {
             {Platform.OS === 'web' && (
               <TouchableOpacity onPress={refresh} disabled={refreshing} style={styles.refreshBtn}>
                 {refreshing
-                  ? <ActivityIndicator size="small" color={activeContext === 'personal' ? colors.personal : colors.primary} />
+                  ? <ActivityIndicator size="small" color={colors.primary} />
                   : <MaterialCommunityIcons name="refresh" size={18} color={colors.textSecondary} />}
               </TouchableOpacity>
             )}
@@ -206,16 +249,15 @@ export default function HomeScreen() {
           <BienvenidaCard onDismiss={() => setMostrarBienvenida(false)} />
         )}
 
-        <ContextSelectorBar />
+        {/* Resumen personal */}
+        <PersonalSummaryCard
+          totalIngresos={resumenPersonal.totalIngresos}
+          totalGastos={resumenPersonal.totalGastos}
+          disponible={resumenPersonal.disponible}
+          pctGastado={resumenPersonal.pctGastado}
+        />
 
-        {/* HeroCard / ResumenPersonalCard */}
-        {activeContext === 'personal' ? (
-          <ResumenPersonalCard
-            totalIngresos={resumenPersonal.totalIngresos}
-            totalGastos={resumenPersonal.totalGastos}
-            disponible={resumenPersonal.disponible}
-          />
-        ) : (
+        {/* Estado del hogar */}
         <View style={[styles.heroCard, { backgroundColor: hc.bg }]}>
           <View style={styles.heroTop}>
             <RNText style={styles.heroHogarName}>
@@ -270,10 +312,9 @@ export default function HomeScreen() {
             ) : null}
           </View>
         </View>
-        )}
 
         {/* Facturas del mes */}
-        {activeContext === 'hogar' && facturas.length > 0 && (
+        {facturas.length > 0 && (
           <View style={styles.seccion}>
             <View style={styles.seccionHeader}>
               <RNText style={[styles.seccionTitle, { color: colors.textPrimary }]}>Facturas del mes</RNText>
@@ -308,42 +349,45 @@ const styles = StyleSheet.create({
 
   // Header
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8 },
-  labelCaps: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
-  greeting: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, letterSpacing: -0.4, marginTop: 2 },
+  labelCaps: { fontFamily: 'Manrope_700Bold', fontSize: 10, letterSpacing: 0.8 },
+  greeting: { fontFamily: 'Manrope_800ExtraBold', fontSize: 22, letterSpacing: -0.4, marginTop: 2 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   avatares: { flexDirection: 'row', gap: -8 },
   refreshBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(30,10,16,0.06)' },
 
+  // PersonalSummaryCard — progress bar
+  progressTrack: { height: 5, borderRadius: 3, overflow: 'hidden', backgroundColor: 'rgba(15,110,86,0.15)' },
+  progressFill: { height: 5, borderRadius: 3 },
+
   // HeroCard
   heroCard: { borderRadius: 16, padding: 16, gap: 16 },
   heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  heroHogarName: { fontFamily: 'Manrope_700Bold', fontSize: 11, color: 'rgba(255,255,255,0.75)' },
+  heroHogarName: { fontFamily: 'Manrope_700Bold', fontSize: 12, color: 'rgba(255,255,255,0.75)' },
   heroBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  heroBadgeText: { fontFamily: 'Manrope_700Bold', fontSize: 9 },
+  heroBadgeText: { fontFamily: 'Manrope_700Bold', fontSize: 10 },
   heroGrid: { flexDirection: 'row', alignItems: 'center' },
   heroStat: { flex: 1, alignItems: 'center', gap: 4 },
-  heroDivider: { width: 1, height: 40, marginHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.13)' },
-  heroNum: { fontFamily: 'Manrope_800ExtraBold', fontSize: 34, letterSpacing: -1 },
-  heroStatLabel: { fontFamily: 'Manrope_500Medium', fontSize: 9, color: 'rgba(255,255,255,0.55)' },
+  heroDivider: { width: 1, height: 44, marginHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.13)' },
+  heroNum: { fontFamily: 'Manrope_800ExtraBold', fontSize: 36, letterSpacing: -1 },
+  heroStatLabel: { fontFamily: 'Manrope_500Medium', fontSize: 11, color: 'rgba(255,255,255,0.55)' },
   heroFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 12 },
-  heroFooterCalm: { fontFamily: 'Manrope_500Medium', fontSize: 11, color: 'rgba(255,255,255,0.5)', flex: 1 },
-  heroFooterText: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, flex: 1 },
-  heroFooterDays: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
-  heroFooterMonto: { fontFamily: 'Manrope_600SemiBold', fontSize: 11 },
+  heroFooterCalm: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.5)', flex: 1 },
+  heroFooterText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, flex: 1 },
+  heroFooterDays: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
+  heroFooterMonto: { fontFamily: 'Manrope_600SemiBold', fontSize: 13 },
 
   // Bill rows
   billList: { borderRadius: 14, borderWidth: 0.5, overflow: 'hidden' },
-  billRow: { flexDirection: 'row', alignItems: 'center', borderLeftWidth: 2.5, paddingLeft: 10, paddingVertical: 10, paddingRight: 12 },
-  billName: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
-  billDue: { fontFamily: 'Manrope_500Medium', fontSize: 9, marginTop: 1 },
-  billBadge: { borderRadius: 20, paddingHorizontal: 7, paddingVertical: 2 },
-  billBadgeText: { fontFamily: 'Manrope_700Bold', fontSize: 8 },
+  billRow: { flexDirection: 'row', alignItems: 'center', borderLeftWidth: 2.5, paddingLeft: 10, paddingVertical: 11, paddingRight: 12 },
+  billName: { fontFamily: 'Manrope_700Bold', fontSize: 13 },
+  billDue: { fontFamily: 'Manrope_500Medium', fontSize: 11, marginTop: 2 },
+  billBadge: { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
+  billBadgeText: { fontFamily: 'Manrope_700Bold', fontSize: 10 },
   billSep: { height: 0.5, backgroundColor: 'rgba(30,10,16,0.06)', marginLeft: 10 },
 
   // Sections
   seccion: { gap: 10 },
   seccionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  seccionTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 13, letterSpacing: -0.3 },
-  seccionLink: { fontFamily: 'Manrope_600SemiBold', fontSize: 10 },
-
+  seccionTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 15, letterSpacing: -0.3 },
+  seccionLink: { fontFamily: 'Manrope_600SemiBold', fontSize: 11 },
 });

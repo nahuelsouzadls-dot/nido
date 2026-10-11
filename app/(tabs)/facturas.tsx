@@ -233,7 +233,7 @@ export default function FacturasScreen() {
       </View>
 
       {/* Context selector */}
-      <View style={{ paddingHorizontal: 16 }}>
+      <View style={{ paddingHorizontal: 16, paddingBottom: 4 }}>
         <ContextSelectorBar />
       </View>
 
@@ -361,22 +361,22 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
   },
-  labelCaps: { fontFamily: 'Manrope_700Bold', fontSize: 8, letterSpacing: 0.8 },
-  title: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, letterSpacing: -0.4, marginTop: 2 },
+  labelCaps: { fontFamily: 'Manrope_700Bold', fontSize: 10, letterSpacing: 0.8 },
+  title: { fontFamily: 'Manrope_800ExtraBold', fontSize: 22, letterSpacing: -0.4, marginTop: 2 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   refreshBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(30,10,16,0.06)' },
   allDoneBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
-  allDoneText: { fontFamily: 'Manrope_700Bold', fontSize: 10 },
+  allDoneText: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
   addBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   filtros: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, paddingBottom: 12 },
   filtro: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
-  filtroText: { fontFamily: 'Manrope_700Bold', fontSize: 10 },
+  filtroText: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
   scroll: { flex: 1 },
   content: { padding: 16, gap: 10, paddingBottom: 120 },
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12 },
   emptyIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   emptyTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 15, textAlign: 'center' },
-  emptySubtext: { fontFamily: 'Manrope_500Medium', fontSize: 11, textAlign: 'center' },
+  emptySubtext: { fontFamily: 'Manrope_500Medium', fontSize: 13, textAlign: 'center' },
   emptyBtn: { borderRadius: 13, paddingVertical: 12, paddingHorizontal: 24, marginTop: 8 },
-  emptyBtnText: { fontFamily: 'Manrope_700Bold', fontSize: 12, color: '#fff' },
+  emptyBtnText: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: '#fff' },
 });
