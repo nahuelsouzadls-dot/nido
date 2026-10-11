@@ -30,6 +30,7 @@ export default function LoginScreen() {
   const [recuperarEmail, setRecuperarEmail] = useState('');
   const [recuperarLoading, setRecuperarLoading] = useState(false);
   const [recuperarExito, setRecuperarExito] = useState(false);
+  const [recuperarError, setRecuperarError] = useState('');
   const [recuperarFocused, setRecuperarFocused] = useState(false);
 
   const getRedirectUrl = () => {
@@ -41,11 +42,16 @@ export default function LoginScreen() {
 
   const handleRecuperar = async () => {
     if (!recuperarEmail.trim()) return;
+    setRecuperarError('');
     setRecuperarLoading(true);
-    await supabase.auth.resetPasswordForEmail(recuperarEmail.trim(), {
-      redirectTo: getRedirectUrl(),
-    });
+    const { error: recErr } = await supabase.auth.resetPasswordForEmail(
+      recuperarEmail.trim(),
+    );
     setRecuperarLoading(false);
+    if (recErr) {
+      setRecuperarError(recErr.message);
+      return;
+    }
     setRecuperarExito(true);
   };
 
@@ -140,6 +146,11 @@ export default function LoginScreen() {
                 onFocus={() => setRecuperarFocused(true)}
                 onBlur={() => setRecuperarFocused(false)}
               />
+              {recuperarError ? (
+                <RNText style={[styles.errorText, { color: colors.danger }]}>
+                  {recuperarError}
+                </RNText>
+              ) : null}
               <TouchableOpacity
                 style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: recuperarLoading ? 0.6 : 1, width: '100%' }]}
                 onPress={handleRecuperar}
