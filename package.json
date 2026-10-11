@@ -8,7 +8,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "build:web": "node scripts/check-env.mjs && expo export --platform web",
-    "build": "node scripts/check-env.mjs && expo export --platform web"
+    "build": "node scripts/check-env.mjs && expo export --platform web",
+    "deploy:bot": "npx supabase functions deploy telegram-bot --no-verify-jwt --project-ref njdirubtwpukwdohugvw"
   },
   "dependencies": {
     "@expo-google-fonts/manrope": "^0.4.2",
