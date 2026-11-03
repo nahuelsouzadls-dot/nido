@@ -6,6 +6,12 @@ Hecha con React Native + Expo, corre de forma nativa en **iOS, Android y web (PW
 
 > _Tu hogar en tus manos._ Gestión compartida de gastos y facturas.
 
+## Capturas
+
+| Home | Facturas | Objetivos |
+|---|---|---|
+| ![Home](docs/screenshots/home.jpg) | ![Facturas](docs/screenshots/facturas.jpg) | ![Objetivos](docs/screenshots/objetivos.jpg) |
+
 ---
 
 ## Destacados
