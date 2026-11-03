@@ -46,6 +46,7 @@ export default function LoginScreen() {
     setRecuperarLoading(true);
     const { error: recErr } = await supabase.auth.resetPasswordForEmail(
       recuperarEmail.trim(),
+      { redirectTo: getRedirectUrl() },
     );
     setRecuperarLoading(false);
     if (recErr) {
